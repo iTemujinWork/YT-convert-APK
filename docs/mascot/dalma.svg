@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+  <!--
+    Dalma (candidate B: soft and charming). Every top-level <g id> is a layer the app
+    switches on and off per mood. Absolute coordinates, flat colours, no transforms.
+    l = viewer's left, r = viewer's right.
+  -->
+
+  <!-- hair behind the head: the whole bob silhouette; only the part behind the neck shows -->
+  <g id="hair_back">
+    <path fill="#5A3D35" stroke="#3D2A25" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+      d="M120 22 C162 22 192 54 192 104 C192 122 191 141 190 159 C189 169 181 174 170 174 L70 174 C59 174 51 169 50 159 C49 141 48 122 48 104 C48 54 78 22 120 22 Z"/>
+  </g>
+
+  <!-- neck, hoodie, hood lapels, shirt collar, drawstrings -->
+  <g id="body">
+    <path fill="#F7E4D5" stroke="#B5806C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+      d="M107 148 L133 148 L133 182 C127 185 113 185 107 182 Z"/>
+    <path fill="#E8C8B6" d="M107 150 L133 150 L133 160 C126 164 114 164 107 160 Z"/>
+    <path fill="#8FD3BE" stroke="#3D2A25" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+      d="M-10 242 C-4 212 36 188 90 175 C102 172.5 138 172.5 150 175 C204 188 244 212 250 242 Z"/>
+    <path fill="none" stroke="#7CC4AC" stroke-width="2.2" stroke-linecap="round" d="M58 196 C52 208 47 224 45 240"/>
+    <path fill="none" stroke="#7CC4AC" stroke-width="2.2" stroke-linecap="round" d="M182 196 C188 208 193 224 195 240"/>
+    <path fill="#8FD3BE" stroke="#5FB29A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      d="M72 186 C84 180 98 176.5 110 177.5 C113 187 116.5 197 120 207 C108 205 94 199 84 191 C80 188.5 76 187.5 72 186 Z"/>
+    <path fill="#8FD3BE" stroke="#5FB29A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+      d="M168 186 C156 180 142 176.5 130 177.5 C127 187 123.5 197 120 207 C132 205 146 199 156 191 C160 188.5 164 187.5 168 186 Z"/>
+    <path fill="#F4FBF8" stroke="#A4B8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+      d="M104 170 C109 172.5 114.5 174.5 120 175.5 L120 189 L117 200.5 C111 192 105 181 104 170 Z"/>
+    <path fill="#F4FBF8" stroke="#A4B8B0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+      d="M136 170 C131 172.5 125.5 174.5 120 175.5 L120 189 L123 200.5 C129 192 135 181 136 170 Z"/>
+    <path fill="none" stroke="#F4FBF8" stroke-width="2.6" stroke-linecap="round" d="M112.5 197 C111.5 205 111 213 110.5 221"/>
+    <path fill="none" stroke="#F4FBF8" stroke-width="2.6" stroke-linecap="round" d="M127.5 197 C128.5 205 129 213 129.5 221"/>
+    <circle fill="#F4FBF8" cx="110.5" cy="223" r="2.8"/>
+    <circle fill="#F4FBF8" cx="129.5" cy="223" r="2.8"/>
+  </g>
+
+  <!-- face -->
+  <g id="head">
+    <path fill="#F7E4D5" stroke="#B5806C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+      d="M120 57 C147 57 166 80 166 108 C166 132 150 155 120 156 C90 155 74 132 74 108 C74 80 93 57 120 57 Z"/>
+  </g>
+
+  <g id="blush">
+    <ellipse fill="#F1B6AD" fill-opacity="0.85" cx="94" cy="129" rx="8.5" ry="5.2"/>
+    <ellipse fill="#F1B6AD" fill-opacity="0.85" cx="146" cy="129" rx="8.5" ry="5.2"/>
+  </g>
+
+  <g id="nose">
+    <path fill="none" stroke="#D4A594" stroke-width="2" stroke-linecap="round" d="M118 125 C119 127.2 121 127.2 122 125"/>
+  </g>
+
+  <!-- mouths -->
+  <g id="mouth_smile">
+    <path fill="none" stroke="#6B3F3A" stroke-width="2.4" stroke-linecap="round" d="M112.5 134 C115 139.5 125 139.5 127.5 134"/>
+  </g>
+  <g id="mouth_happy">
+    <path fill="#6B3F3A" stroke="#6B3F3A" stroke-width="1.6" stroke-linejoin="round" d="M111 134 C114 146 126 146 129 134 C123 136 117 136 111 134 Z"/>
+    <path fill="#E8908A" d="M115 140.5 C117 143.8 123 143.8 125 140.5 C122 139.6 118 139.6 115 140.5 Z"/>
+  </g>
+  <g id="mouth_sorry">
+    <path fill="none" stroke="#6B3F3A" stroke-width="2.4" stroke-linecap="round" d="M116 137.2 C118 135.6 122 135.6 124 137.2"/>
+  </g>
+  <g id="mouth_sleepy">
+    <path fill="none" stroke="#6B3F3A" stroke-width="2.2" stroke-linecap="round" d="M116 135.5 C117.5 138 122.5 138 124 135.5"/>
+  </g>
+
+  <!-- eyes: viewer's left -->
+  <g id="eye_l_open">
+    <ellipse fill="#3A2622" cx="100.5" cy="113" rx="9" ry="9.8"/>
+    <ellipse fill="#6A4A41" cx="100.5" cy="116.8" rx="5.2" ry="4.4"/>
+    <circle fill="#FFFFFF" cx="97.2" cy="109" r="3"/>
+    <circle fill="#FFFFFF" cx="104.2" cy="117.2" r="1.4"/>
+  </g>
+  <g id="eye_l_closed">
+    <path fill="none" stroke="#3A2622" stroke-width="2.6" stroke-linecap="round" d="M92.5 113 C95.5 118 106.5 118 109.5 113"/>
+  </g>
+  <g id="eye_l_happy">
+    <path fill="none" stroke="#3A2622" stroke-width="2.8" stroke-linecap="round" d="M92 118 C95 108.5 107 108.5 110 118"/>
+  </g>
+  <g id="eye_l_sleepy">
+    <ellipse fill="#3A2622" cx="100.5" cy="113" rx="9" ry="9.8"/>
+    <ellipse fill="#6A4A41" cx="100.5" cy="116.8" rx="5.2" ry="4.4"/>
+    <circle fill="#FFFFFF" cx="97.5" cy="117.2" r="1.8"/>
+    <path fill="#F7E4D5" d="M91 113.5 A9.5 10.8 0 0 1 110 113.5 C106 111.2 95 111.2 91 113.5 Z"/>
+    <path fill="none" stroke="#3A2622" stroke-width="2.4" stroke-linecap="round" d="M92 113.5 C96 111.2 105 111.2 109 113.5"/>
+  </g>
+
+  <!-- eyes: viewer's right -->
+  <g id="eye_r_open">
+    <ellipse fill="#3A2622" cx="139.5" cy="113" rx="9" ry="9.8"/>
+    <ellipse fill="#6A4A41" cx="139.5" cy="116.8" rx="5.2" ry="4.4"/>
+    <circle fill="#FFFFFF" cx="136.2" cy="109" r="3"/>
+    <circle fill="#FFFFFF" cx="143.2" cy="117.2" r="1.4"/>
+  </g>
+  <g id="eye_r_closed">
+    <path fill="none" stroke="#3A2622" stroke-width="2.6" stroke-linecap="round" d="M130.5 113 C133.5 118 144.5 118 147.5 113"/>
+  </g>
+  <g id="eye_r_happy">
+    <path fill="none" stroke="#3A2622" stroke-width="2.8" stroke-linecap="round" d="M130 118 C133 108.5 145 108.5 148 118"/>
+  </g>
+  <g id="eye_r_sleepy">
+    <ellipse fill="#3A2622" cx="139.5" cy="113" rx="9" ry="9.8"/>
+    <ellipse fill="#6A4A41" cx="139.5" cy="116.8" rx="5.2" ry="4.4"/>
+    <circle fill="#FFFFFF" cx="136.5" cy="117.2" r="1.8"/>
+    <path fill="#F7E4D5" d="M130 113.5 A9.5 10.8 0 0 1 149 113.5 C145 111.2 134 111.2 130 113.5 Z"/>
+    <path fill="none" stroke="#3A2622" stroke-width="2.4" stroke-linecap="round" d="M131 113.5 C135 111.2 144 111.2 148 113.5"/>
+  </g>
+
+  <!-- brows -->
+  <g id="brow_l">
+    <path fill="none" stroke="#6B524A" stroke-width="2.2" stroke-linecap="round" d="M91 98 C95 94 103 93.5 109 96"/>
+  </g>
+  <g id="brow_r">
+    <path fill="none" stroke="#6B524A" stroke-width="2.2" stroke-linecap="round" d="M149 98 C145 94 137 93.5 131 96"/>
+  </g>
+  <g id="brow_l_sorry">
+    <path fill="none" stroke="#6B524A" stroke-width="2.2" stroke-linecap="round" d="M91 98.5 C96 97.5 103 95 109 92"/>
+  </g>
+  <g id="brow_r_sorry">
+    <path fill="none" stroke="#6B524A" stroke-width="2.2" stroke-linecap="round" d="M149 98.5 C144 97.5 137 95 131 92"/>
+  </g>
+
+  <!-- bangs and the side locks in front of the face -->
+  <g id="hair_front">
+    <path fill="#5A3D35" stroke="#3D2A25" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"
+      d="M86 94 C94 94 108 86.5 116 83.5 C117.6 83 117.8 81.4 116.5 80.6 C115.5 79.8 116 78 118.5 77.2 C138 77 154 82 154 96 C160 126 153 156 147 167 C146 172 149 174 154 174 L170 174 C181 174 189 169 190 159 C191 141 192 122 192 104 C192 54 162 22 120 22 C78 22 48 54 48 104 C48 122 49 141 50 159 C51 169 59 174 70 174 L86 174 C91 174 94 172 93 167 C87 156 80 126 86 94 Z"/>
+    <path fill="none" stroke="#7A5A4E" stroke-width="3.4" stroke-linecap="round" d="M82 60 C90 46 106 38 128 37"/>
+    <path fill="none" stroke="#4B332C" stroke-opacity="0.7" stroke-width="1.6" stroke-linecap="round" d="M122 74 C128 64 136 56 146 50"/>
+    <path fill="none" stroke="#4B332C" stroke-width="1.6" stroke-linecap="round" d="M64 112 C62 132 62 150 65 166"/>
+    <path fill="none" stroke="#4B332C" stroke-width="1.6" stroke-linecap="round" d="M176 112 C178 132 178 150 175 166"/>
+  </g>
+
+  <!-- play-button hair clip (the app paints a progress fill over clip_shape) -->
+  <g id="clip">
+    <path id="clip_shape" fill="#8FD3BE" stroke="#24564B" stroke-width="2.2" stroke-linejoin="round"
+      d="M156.1 59.9 L173 67.7 Q178 70 173 72.3 L156.1 80.1 Q152 82 152 77.5 L152 62.5 Q152 58 156.1 59.9 Z"/>
+    <path fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" d="M158.5 66 L158.5 74"/>
+  </g>
+
+  <!-- sweat drop (sorry) -->
+  <g id="drop">
+    <path fill="#24564B" stroke="#8FD3BE" stroke-width="1.8" stroke-linejoin="round"
+      d="M183 86 C186 92.5 190.5 96.5 190.5 101.5 C190.5 106 187 109 183 109 C179 109 175.5 106 175.5 101.5 C175.5 96.5 180 92.5 183 86 Z"/>
+    <circle fill="#FFFFFF" fill-opacity="0.85" cx="180.5" cy="101.5" r="1.5"/>
+  </g>
+
+  <!-- sparkles (happy) -->
+  <g id="sparkles">
+    <path fill="#8FD3BE" d="M34 69 Q34 78 43 78 Q34 78 34 87 Q34 78 25 78 Q34 78 34 69 Z"/>
+    <path fill="#8FD3BE" d="M206 42 Q206 50 214 50 Q206 50 206 58 Q206 50 198 50 Q206 50 206 42 Z"/>
+    <path fill="#8FD3BE" d="M214 83.5 Q214 88 218.5 88 Q214 88 214 92.5 Q214 88 209.5 88 Q214 88 214 83.5 Z"/>
+  </g>
+
+  <!-- zz (sleepy) -->
+  <g id="zz">
+    <path fill="none" stroke="#8FD3BE" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M192.5 39 L203.5 39 L192.5 49 L203.5 49"/>
+    <path fill="none" stroke="#8FD3BE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M208 26.5 L216 26.5 L208 33.5 L216 33.5"/>
+  </g>
+</svg>
