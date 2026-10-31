@@ -34,7 +34,7 @@ enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY }
  * AI-made pictures exist ([images]), the same calls play her clips instead.
  */
 @Stable
-class MascotState(val reducedMotion: Boolean, internal val images: MascotImages? = null) {
+class MascotState internal constructor(val reducedMotion: Boolean, internal val images: MascotImages? = null) {
     /** 0 = looking at you, 1 = head turned three-quarters, hair clip towards you. */
     val turn = Animatable(0f)
 
