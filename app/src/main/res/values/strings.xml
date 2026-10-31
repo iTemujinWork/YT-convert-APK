@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dalma</string>
+
+    <!-- Dalma's sentences: one at the end, kind and informal. -->
+    <string name="saved">Elmentettem neked.</string>
+    <string name="saved_alt">Kész is! Jó hallgatást.</string>
+    <string name="saved_many">Elmentettem mind a %1$s.</string>
+    <string name="saved_many_partial">Elmentettem %1$s, %2$s nem értem el.</string>
+    <string name="saved_many_had">Elmentettem %1$s, %2$d már megvolt.</string>
+    <string name="saved_many_capped">Elmentettem az első %1$s.</string>
+    <string name="already_have">Ez már megvan.</string>
+    <string name="already_have_all">Ezek mind megvannak.</string>
+    <string name="no_internet">Nincs net. Amint lesz, elmentem.</string>
+    <string name="private_video">Ezt nem érem el, mert privát.</string>
+    <string name="age_restricted">Ezt nem érem el, mert korhatáros.</string>
+    <string name="members_only">Ezt nem érem el, csak tagoknak szól.</string>
+    <string name="region_blocked">Ezt nem érem el, itt nem elérhető.</string>
+    <string name="unavailable">Ez a videó már nincs meg.</string>
+    <string name="live">Ez élő adás, azt nem tudom menteni.</string>
+    <string name="not_youtube">Ezt nem ismerem, csak YouTube-ot tudok.</string>
+    <string name="not_a_video">Ez nem egy dal. Oszd meg a videót.</string>
+    <string name="disk_full">Nem fér el a telefonon.</string>
+    <string name="unreachable">Ezt most nem érem el, próbáld később.</string>
+    <string name="empty_share">Nem kaptam linket.</string>
+
+    <!-- Notification while saving in the background -->
+    <string name="notification_channel">Mentés</string>
+    <string name="notification_channel_description">Amíg Dalma a háttérben ment.</string>
+    <string name="notification_title">Dalma ment…</string>
+    <string name="notification_title_many">Dalma ment… %1$d/%2$d</string>
+    <string name="notification_preparing">Dalma készülődik…</string>
+    <string name="notification_cancel">Megszakítás</string>
+
+    <!-- Hidden about card (long press on the home screen) -->
+    <string name="about_version">Dalma %1$s</string>
+    <string name="about_engine">Letöltőmotor: yt-dlp %1$s</string>
+    <string name="about_engine_unknown">Letöltőmotor: yt-dlp</string>
+    <string name="about_update">Van újabb Dalma.</string>
+    <string name="about_how">YouTube-ban: Megosztás → Dalma.</string>
+    <string name="about_licenses">Licencek</string>
+    <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
+    <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>
+    <string name="about_license_ffmpeg">FFmpeg · LGPL / GPL</string>
+    <string name="about_license_python">Python · PSF</string>
+    <string name="about_license_quickjs">QuickJS · MIT</string>
+    <string name="about_license_fonts">Fraunces, Nunito · OFL 1.1</string>
+    <string name="about_license_compose">Jetpack Compose, AndroidX · Apache 2.0</string>
+    <string name="about_source">Forrás: github.com/iTemujinWork/YT-convert-APK</string>
+
+    <!-- Accessibility -->
+    <string name="cd_dalma">Dalma</string>
+    <string name="cd_dalma_working">Dalma ment, %1$d%%</string>
+    <string name="cd_sky">Csillagos ég</string>
+</resources>

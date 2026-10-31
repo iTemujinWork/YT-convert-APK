@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Dalma</string>
+
+    <string name="saved">Saved it for you.</string>
+    <string name="saved_alt">Done! Enjoy.</string>
+    <string name="saved_many">Saved all %1$s.</string>
+    <string name="saved_many_partial">Saved %1$s, couldn\'t reach %2$s.</string>
+    <string name="saved_many_had">Saved %1$s, you already had %2$d.</string>
+    <string name="saved_many_capped">Saved the first %1$s.</string>
+    <string name="already_have">You already have this one.</string>
+    <string name="already_have_all">You already have all of these.</string>
+    <string name="no_internet">No internet. I\'ll save it as soon as it\'s back.</string>
+    <string name="private_video">I can\'t reach this, it\'s private.</string>
+    <string name="age_restricted">I can\'t reach this, it\'s age restricted.</string>
+    <string name="members_only">I can\'t reach this, it\'s for members only.</string>
+    <string name="region_blocked">I can\'t reach this, it\'s not available here.</string>
+    <string name="unavailable">This video is gone.</string>
+    <string name="live">That\'s a live stream, I can\'t save those.</string>
+    <string name="not_youtube">I don\'t know this one, I only do YouTube.</string>
+    <string name="not_a_video">That\'s not a song. Share the video.</string>
+    <string name="disk_full">There\'s no room on the phone.</string>
+    <string name="unreachable">I can\'t reach this right now, try again later.</string>
+    <string name="empty_share">I didn\'t get a link.</string>
+
+    <string name="notification_channel">Saving</string>
+    <string name="notification_channel_description">While Dalma saves in the background.</string>
+    <string name="notification_title">Dalma is saving…</string>
+    <string name="notification_title_many">Dalma is saving… %1$d/%2$d</string>
+    <string name="notification_preparing">Dalma is getting ready…</string>
+    <string name="notification_cancel">Cancel</string>
+
+    <string name="about_version">Dalma %1$s</string>
+    <string name="about_engine">Engine: yt-dlp %1$s</string>
+    <string name="about_engine_unknown">Engine: yt-dlp</string>
+    <string name="about_update">A newer Dalma is out.</string>
+    <string name="about_how">In YouTube: Share → Dalma.</string>
+    <string name="about_licenses">Licenses</string>
+    <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
+    <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>
+    <string name="about_license_ffmpeg">FFmpeg · LGPL / GPL</string>
+    <string name="about_license_python">Python · PSF</string>
+    <string name="about_license_quickjs">QuickJS · MIT</string>
+    <string name="about_license_fonts">Fraunces, Nunito · OFL 1.1</string>
+    <string name="about_license_compose">Jetpack Compose, AndroidX · Apache 2.0</string>
+    <string name="about_source">Source: github.com/iTemujinWork/YT-convert-APK</string>
+
+    <string name="cd_dalma">Dalma</string>
+    <string name="cd_dalma_working">Dalma is saving, %1$d%%</string>
+    <string name="cd_sky">Starry sky</string>
+</resources>
