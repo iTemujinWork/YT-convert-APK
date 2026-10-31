@@ -1,0 +1,26 @@
+# Gradle / build output
+.gradle/
+build/
+.kotlin/
+local.properties
+captures/
+*.apk
+*.aab
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Signing material never belongs in the repository
+*.jks
+*.keystore
+!app/preview.keystore
+keystore.properties
+
+# yt-dlp is downloaded and verified by CI right before the build
+app/src/main/res/raw/ytdlp
+
+# Screenshot test output (CI uploads these as artifacts)
+app/build/outputs/roborazzi/
