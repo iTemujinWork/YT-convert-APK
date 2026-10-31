@@ -11,7 +11,8 @@ target="${1:-app/src/main/res/raw/ytdlp}"
 auth=()
 if [[ -n "${GH_TOKEN:-}" ]]; then auth=(-H "Authorization: Bearer $GH_TOKEN"); fi
 
-tag=$(curl -fsSL "${auth[@]}" -H "Accept: application/vnd.github+json" \
+# ${auth[@]+...}: macOS's bash 3.2 treats an empty array as unbound under set -u
+tag=$(curl -fsSL ${auth[@]+"${auth[@]}"} -H "Accept: application/vnd.github+json" \
   https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])')
 echo "yt-dlp $tag"
 
