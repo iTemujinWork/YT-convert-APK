@@ -2,12 +2,18 @@ package io.github.itemujinwork.dalma
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -59,9 +65,21 @@ class ScreenshotTest {
         return state
     }
 
+    /** The sheet is 62 % of the screen, at the bottom, like the real one over YouTube. */
     private fun sheet(name: String, state: MascotState, glow: Float = 0f, sentence: String? = null, percent: Int? = null) = shot(name) {
-        Box(Modifier.fillMaxSize().background(DalmaColors.Night)) {
-            ShareSheetContent(mascot = state, sky = SkyState(), glow = glow, sentence = sentence, progressPercent = percent, modifier = Modifier.fillMaxSize())
+        Box(Modifier.fillMaxSize().background(Color(0xFF101010))) {
+            ShareSheetContent(
+                mascot = state,
+                sky = SkyState(),
+                glow = glow,
+                sentence = sentence,
+                progressPercent = percent,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.62f)
+                    .background(DalmaColors.Night, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+            )
         }
     }
 

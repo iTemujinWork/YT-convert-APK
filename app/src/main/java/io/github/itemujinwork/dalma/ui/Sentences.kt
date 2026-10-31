@@ -5,7 +5,6 @@ import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.core.FailureKind
 import io.github.itemujinwork.dalma.core.LinkCheck
 import io.github.itemujinwork.dalma.core.Outcome
-import java.util.Locale
 
 /** Dalma's one sentence for every way a share can end. */
 object Sentences {
@@ -28,12 +27,17 @@ object Sentences {
         is Outcome.Saved -> context.getString(R.string.saved)
         Outcome.AlreadyHave -> context.getString(R.string.already_have)
         is Outcome.Failed -> context.getString(forFailure(outcome.kind))
-        is Outcome.SavedMany -> when {
-            outcome.saved == 0 && outcome.failed == 0 -> context.getString(R.string.already_have_all)
-            outcome.capped -> context.getString(R.string.saved_many_capped, accusative(outcome.saved))
-            outcome.failed > 0 -> context.getString(R.string.saved_many_partial, accusative(outcome.saved), accusative(outcome.failed))
-            outcome.alreadyHad > 0 -> context.getString(R.string.saved_many_had, accusative(outcome.saved), outcome.alreadyHad)
-            else -> context.getString(R.string.saved_many, accusative(outcome.saved))
+        is Outcome.SavedMany -> {
+            // The suffix follows the language the sentence is actually in (a German phone still
+            // gets the Hungarian strings, so the phone's locale would be the wrong guide).
+            val language = context.getString(R.string.sentence_language)
+            when {
+                outcome.saved == 0 && outcome.failed == 0 -> context.getString(R.string.already_have_all)
+                outcome.capped -> context.getString(R.string.saved_many_capped, accusative(outcome.saved, language))
+                outcome.failed > 0 -> context.getString(R.string.saved_many_partial, accusative(outcome.saved, language), accusative(outcome.failed, language))
+                outcome.alreadyHad > 0 -> context.getString(R.string.saved_many_had, accusative(outcome.saved, language), outcome.alreadyHad)
+                else -> context.getString(R.string.saved_many, accusative(outcome.saved, language))
+            }
         }
     }
 
@@ -49,8 +53,8 @@ object Sentences {
      * Hungarian numbers take an object suffix that depends on how they are said:
      * 12-t, 10-et, 3-at, 5-öt, 6-ot. Other languages get the plain number.
      */
-    fun accusative(n: Int, locale: Locale = Locale.getDefault()): String {
-        if (locale.language != "hu") return n.toString()
+    fun accusative(n: Int, language: String): String {
+        if (language != "hu") return n.toString()
         val suffix = when {
             n % 10 != 0 -> when (n % 10) {
                 1, 4, 7, 9 -> "et"

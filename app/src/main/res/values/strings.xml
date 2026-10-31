@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Dalma</string>
+    <!-- The language of these sentences; the number suffix follows it, not the phone's locale. -->
+    <string name="sentence_language">hu</string>
 
     <!-- Dalma's sentences: one at the end, kind and informal. -->
     <string name="saved">Elmentettem neked.</string>
     <string name="saved_alt">Kész is! Jó hallgatást.</string>
     <string name="saved_many">Elmentettem mind a %1$s.</string>
-    <string name="saved_many_partial">Elmentettem %1$s, %2$s nem értem el.</string>
-    <string name="saved_many_had">Elmentettem %1$s, %2$d már megvolt.</string>
+    <string name="saved_many_partial">Elmentettem %1$s, %2$s nem értem\u00A0el.</string>
+    <string name="saved_many_had">Elmentettem %1$s, %2$d már\u00A0megvolt.</string>
     <string name="saved_many_capped">Elmentettem az első %1$s.</string>
     <string name="already_have">Ez már megvan.</string>
     <string name="already_have_all">Ezek mind megvannak.</string>
-    <string name="no_internet">Nincs net. Amint lesz, elmentem.</string>
-    <string name="private_video">Ezt nem érem el, mert privát.</string>
-    <string name="age_restricted">Ezt nem érem el, mert korhatáros.</string>
-    <string name="members_only">Ezt nem érem el, csak tagoknak szól.</string>
-    <string name="region_blocked">Ezt nem érem el, itt nem elérhető.</string>
+    <string name="no_internet">Nincs net. Amint lesz,\u00A0elmentem.</string>
+    <string name="private_video">Ezt nem érem el, mert\u00A0privát.</string>
+    <string name="age_restricted">Ezt nem érem el, mert\u00A0korhatáros.</string>
+    <string name="members_only">Ezt nem érem el, csak tagoknak\u00A0szól.</string>
+    <string name="region_blocked">Ezt nem érem el, itt nem\u00A0elérhető.</string>
     <string name="unavailable">Ez a videó már nincs meg.</string>
-    <string name="live">Ez élő adás, azt nem tudom menteni.</string>
-    <string name="not_youtube">Ezt nem ismerem, csak YouTube-ot tudok.</string>
-    <string name="not_a_video">Ez nem egy dal. Oszd meg a videót.</string>
+    <string name="live">Ez élő adás, azt nem tudom\u00A0menteni.</string>
+    <string name="not_youtube">Ezt nem ismerem, csak YouTube-ot\u00A0tudok.</string>
+    <string name="not_a_video">Ez nem egy dal. Oszd meg a\u00A0videót.</string>
     <string name="disk_full">Nem fér el a telefonon.</string>
-    <string name="unreachable">Ezt most nem érem el, próbáld később.</string>
+    <string name="unreachable">Ezt most nem érem el, próbáld\u00A0később.</string>
     <string name="empty_share">Nem kaptam linket.</string>
 
     <!-- Notification while saving in the background -->

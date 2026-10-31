@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The palette from the character sheet. -->
+    <!-- The night sky; the rest of the palette lives in DalmaColors (Theme.kt). -->
     <color name="night">#FF0E1B19</color>
-    <color name="deep_green">#FF16302B</color>
-    <color name="deep_teal">#FF24564B</color>
-    <color name="mint">#FF8FD3BE</color>
-    <color name="milk">#FFF4FBF8</color>
 </resources>

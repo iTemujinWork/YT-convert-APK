@@ -21,6 +21,8 @@ androidxTestCore = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 
 [libraries]
+# Provided by the included build in core/ (see settings.gradle.kts), hence no version.
+dalma-core = { module = "io.github.itemujinwork.dalma:dalma-core" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Dalma</string>
+    <string name="sentence_language">en</string>
 
     <string name="saved">Saved it for you.</string>
     <string name="saved_alt">Done! Enjoy.</string>

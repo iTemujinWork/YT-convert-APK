@@ -20,6 +20,7 @@
         android:theme="@style/Theme.Dalma"
         android:enableOnBackInvokedCallback="true"
         android:extractNativeLibs="true"
+        tools:ignore="DataExtractionRules"
         tools:targetApi="34">
 
         <activity
@@ -37,7 +38,6 @@
         <activity
             android:name=".ShareActivity"
             android:exported="true"
-            android:label="@string/app_name"
             android:theme="@style/Theme.Dalma.Share"
             android:excludeFromRecents="true"
             android:noHistory="true"

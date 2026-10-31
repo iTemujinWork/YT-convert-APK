@@ -1,7 +1,6 @@
 package io.github.itemujinwork.dalma.home
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -27,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.ui.Sky
 import io.github.itemujinwork.dalma.ui.mascot.Mascot
@@ -100,5 +100,5 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
 }
 
 internal fun openUrl(context: android.content.Context, url: String) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
 }

@@ -83,10 +83,14 @@ android {
         }
     }
 
+    // Robolectric only sees the variant's merged assets, never src/test/assets, so the
+    // picture fixtures of ScreenshotTest ride along in debug builds (release stays clean).
+    sourceSets.getByName("debug").assets.srcDir("src/test/assets")
+
     lint {
         abortOnError = true
         warningsAsErrors = false
-        disable += setOf("ObsoleteLintCustomCheck", "GradleDependency", "AndroidGradlePluginVersion", "OldTargetApi")
+        disable += setOf("ObsoleteLintCustomCheck", "GradleDependency", "AndroidGradlePluginVersion", "OldTargetApi", "ChromeOsAbiSupport")
     }
 }
 
@@ -99,7 +103,7 @@ roborazzi {
 }
 
 dependencies {
-    implementation("io.github.itemujinwork.dalma:dalma-core")
+    implementation(libs.dalma.core)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

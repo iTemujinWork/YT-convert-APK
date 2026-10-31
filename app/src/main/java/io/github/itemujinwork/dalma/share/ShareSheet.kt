@@ -1,6 +1,7 @@
 package io.github.itemujinwork.dalma.share
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -30,9 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -156,7 +158,7 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         }
     }
 
-    val sheetHeight = (LocalConfiguration.current.screenHeightDp * 0.62f).dp
+    val sheetHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.62f).toDp() }
     ModalBottomSheet(
         onDismissRequest = onFinished,
         sheetState = sheetState,
@@ -205,6 +207,7 @@ fun ShareSheetContent(
     }
 }
 
+@SuppressLint("InlinedApi")
 private fun shouldAskForNotifications(context: Context): Boolean =
     Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
