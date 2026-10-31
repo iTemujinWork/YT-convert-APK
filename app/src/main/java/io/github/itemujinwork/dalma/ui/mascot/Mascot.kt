@@ -1,5 +1,6 @@
 package io.github.itemujinwork.dalma.ui.mascot
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -45,6 +46,11 @@ private fun variants(expression: Expression): Variants = when (expression) {
     Expression.SLEEPY -> Variants("eye_l_sleepy", "eye_r_sleepy", "mouth_sleepy", "brow_l", "brow_r")
 }
 
+private const val TWO_PI = (Math.PI * 2).toFloat()
+
+/** Time-driven values that are not part of the state: breathing and a slow drift for twinkles. */
+private class Clock(val breath: Float, val drift: Float, val shine: Float)
+
 /**
  * Dalma. The square art box is scaled to the width of the composable and aligned to its
  * bottom edge, so her shoulders run off the screen the way the mock-ups show. Drawn from
@@ -73,10 +79,20 @@ fun Mascot(
     } else {
         rememberInfiniteTransition(label = "drift").animateFloat(
             initialValue = 0f,
-            targetValue = (Math.PI * 2).toFloat(),
+            targetValue = TWO_PI,
             animationSpec = infiniteRepeatable(tween(6_000)),
-            label = "zz",
+            label = "drift",
         ).value
+    }
+
+    // A short gleam on the hair clip the moment it is full.
+    val shine = remember { Animatable(0f) }
+    val full = state.clipFill == 1f
+    LaunchedEffect(full) {
+        if (full && !reducedMotion) {
+            shine.snapTo(1f)
+            shine.animateTo(0f, tween(520))
+        }
     }
 
     // While a clip plays, redraw every frame so Android can show the next picture.
@@ -91,9 +107,10 @@ fun Mascot(
     val semanticsModifier = if (contentDescription != null) modifier.semantics { this.contentDescription = contentDescription } else modifier
     Canvas(semanticsModifier) {
         @Suppress("UNUSED_VARIABLE") val tick = frame
+        val clock = Clock(breath, drift, shine.value)
         val images = state.images
         if (images != null) {
-            drawPictures(state, images, breath)
+            drawPictures(state, images, clock)
         } else {
             val art = MascotArt.SIZE
             val s = size.width / art
@@ -102,7 +119,7 @@ fun Mascot(
                 translate(0f, top)
                 scale(s, s, Offset.Zero)
             }) {
-                drawMascot(state, breath, drift)
+                drawMascot(state, clock)
             }
         }
     }
@@ -110,13 +127,13 @@ fun Mascot(
 
 // ---------------------------------------------------------------- pictures
 
-private fun DrawScope.drawPictures(state: MascotState, images: MascotImages, breath: Float) {
+private fun DrawScope.drawPictures(state: MascotState, images: MascotImages, clock: Clock) {
     val side = size.width
     val top = size.height - side
     val closeness = state.closeness.value
     val dst = IntSize(side.roundToInt(), side.roundToInt())
     scale(closeness, closeness, pivot = Offset(size.width / 2f, size.height)) {
-        translate(0f, top + state.hop.value * side / MascotArt.SIZE - 0.004f * side * breath) {
+        translate(0f, top + state.hop.value * side / MascotArt.SIZE - 0.004f * side * clock.breath) {
             val clip = state.playing
             if (clip != null) {
                 drawIntoCanvas { canvas ->
@@ -130,53 +147,65 @@ private fun DrawScope.drawPictures(state: MascotState, images: MascotImages, bre
                     images.still(previous)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = 1f - blend) }
                 }
                 images.still(state.still)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = blend) }
-                if (state.still == "fordul") state.clipFill?.let { drawPictureClipFill(images, it, dst) }
+                if (state.still == "fordul") state.clipFill?.let { drawPictureClipFill(images, it, dst, clock.shine) }
             }
         }
     }
 }
 
 /** The empty part of the hair clip is painted deep teal through the clip's mask. */
-private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst: IntSize) {
+private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst: IntSize, shine: Float) {
     val mask = images.clipMask ?: return
     val box = images.clipBox ?: return
     val scale = dst.width.toFloat() / images.size
     val top = box[1] * scale
     val bottom = box[3] * scale
     val emptyBottom = top + (bottom - top) * (1f - fill.coerceIn(0f, 1f))
-    if (emptyBottom <= top) return
-    clipRect(box[0] * scale - 2f, top - 2f, box[2] * scale + 2f, emptyBottom) {
-        drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, colorFilter = ColorFilter.tint(DalmaColors.DeepTeal, BlendMode.SrcIn))
+    if (emptyBottom > top) {
+        clipRect(box[0] * scale - 2f, top - 2f, box[2] * scale + 2f, emptyBottom) {
+            drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, colorFilter = ColorFilter.tint(DalmaColors.DeepTeal, BlendMode.SrcIn))
+        }
+    }
+    if (shine > 0f) {
+        drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, alpha = shine * 0.75f, colorFilter = ColorFilter.tint(DalmaColors.Milk, BlendMode.SrcIn))
     }
 }
 
 // ---------------------------------------------------------------- vector layers
 
-private fun DrawScope.drawMascot(state: MascotState, breath: Float, drift: Float) {
-    val turn = state.turn.value
+private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
     val closeness = state.closeness.value
     val hop = state.hop.value
+    val squash = state.squash.value
     val neck = Offset(120f, 168f)
+    val breath = clock.breath
 
     scale(closeness, closeness, pivot = Offset(120f, 240f)) {
-        translate(0f, hop) {
+        // The hop stretches her a little going up and squashes her a little landing.
+        withTransform({
+            translate(0f, hop)
+            scale(1f - 0.03f * squash, 1f + 0.045f * squash, pivot = Offset(120f, 240f))
+        }) {
             // The body breathes: the shoulders rise a little.
             scale(1f + 0.008f * breath, 1f + 0.014f * breath, pivot = Offset(120f, 240f)) {
                 drawLayer("body")
             }
-            // The head sits on the neck, tilts around it, and rises with each breath.
+            // The head sits on the neck; it tilts, sways with the music and follows a glance a little.
+            val headAngle = state.tilt.value + state.sway.value + state.gazeX.value * 0.9f
             withTransform({
                 translate(0f, -1.6f * breath)
-                rotate(state.tilt.value, pivot = neck)
+                rotate(headAngle, pivot = neck)
             }) {
-                drawHead(state, turn)
+                drawHead(state, clock)
             }
-            drawExtras(state, drift)
+            drawExtras(state, clock)
         }
     }
 }
 
-private fun DrawScope.drawHead(state: MascotState, turn: Float) {
+private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
+    val turn = state.turn.value
+    val lag = state.hairLag.value
     val nodDip = state.nod.value * 0.9f
     val nodSquash = 1f - state.nod.value * 0.004f
     val headPivot = Offset(120f, 104f)
@@ -184,31 +213,31 @@ private fun DrawScope.drawHead(state: MascotState, turn: Float) {
         translate(0f, nodDip)
         scale(1f, nodSquash, pivot = headPivot)
     }) {
-        // Turning three-quarters: the head narrows, the back hair shows a little more.
+        // Turning three-quarters: the head narrows, the back hair shows a little more, a beat later.
         scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-            translate(5f * turn, 0f) { drawLayer("hair_back") }
+            translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
             drawLayer("head")
             drawLayer("blush")
         }
-        // The face slides towards the turn and narrows.
+        // The face slides towards the turn and narrows; a glance moves it a touch too.
         withTransform({
-            translate(-14f * turn, 1.5f * turn)
+            translate(-14f * turn + state.gazeX.value * 1.2f, 1.5f * turn + state.gazeY.value * 0.8f)
             scale(1f - 0.12f * turn, 1f, pivot = headPivot)
         }) {
             drawLayer("nose")
             drawFace(state)
         }
         scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-            translate(-3f * turn, 0f) { drawLayer("hair_front") }
+            translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
         }
         // The hair clip comes forward and grows as she turns.
         val clipCenter = MascotPaths.clipBounds.center
         withTransform({
-            translate(-9f * turn, 2.5f * turn)
+            translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
             scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
         }) {
             drawLayer("clip")
-            state.clipFill?.let { drawClipFill(it) }
+            state.clipFill?.let { drawClipFill(it, clock.shine) }
         }
     }
 }
@@ -256,8 +285,8 @@ private fun DrawScope.drawEye(layer: String, state: MascotState, alpha: Float) {
     }
 }
 
-/** The download fills the clip from the bottom; the empty part is deep teal. */
-private fun DrawScope.drawClipFill(fill: Float) {
+/** The download fills the clip from the bottom; the empty part is deep teal; full, it gleams once. */
+private fun DrawScope.drawClipFill(fill: Float, shine: Float) {
     val bounds = MascotPaths.clipBounds
     val emptyHeight = bounds.height * (1f - fill.coerceIn(0f, 1f))
     if (emptyHeight > 0f) {
@@ -266,16 +295,30 @@ private fun DrawScope.drawClipFill(fill: Float) {
         }
     }
     drawPath(MascotPaths.clip, DalmaColors.Mint, style = Stroke(width = 1.6f))
+    if (shine > 0f) drawPath(MascotPaths.clip, DalmaColors.Milk, alpha = shine * 0.8f)
 }
 
-private fun DrawScope.drawExtras(state: MascotState, drift: Float) {
+private fun DrawScope.drawExtras(state: MascotState, clock: Clock) {
+    val drift = clock.drift
     val sparkles = state.sparkles.value
     if (sparkles > 0f) {
-        val pulse = 0.9f + 0.1f * sin(drift * 2f)
-        scale(pulse, pulse, pivot = Offset(120f, 90f)) { drawLayer("sparkles", sparkles) }
+        // Each sparkle twinkles on its own beat.
+        MascotPaths.layer("sparkles").forEachIndexed { index, shape ->
+            val twinkle = 0.55f + 0.45f * sin(drift * 2.3f + index * 2.1f)
+            val pulse = 0.85f + 0.15f * sin(drift * 2.3f + index * 2.1f + 1f)
+            scale(pulse, pulse, pivot = shape.bounds.center) { drawShape(shape, sparkles * twinkle) }
+        }
     }
     val drop = state.drop.value
-    if (drop > 0f) translate(0f, (1f - drop) * -4f) { drawLayer("drop", drop) }
+    if (drop > 0f) translate(0f, (1f - drop) * -4f + 0.8f * sin(drift * 0.7f)) { drawLayer("drop", drop) }
     val zz = state.zz.value
-    if (zz > 0f) translate(0f, -3f * sin(drift)) { drawLayer("zz", zz) }
+    if (zz > 0f) {
+        // The z's float up one after the other.
+        MascotPaths.layer("zz").forEachIndexed { index, shape ->
+            val phase = drift * 0.9f + index * 1.4f
+            val rise = -2.5f - 2.5f * sin(phase)
+            val fade = 0.6f + 0.4f * sin(phase + 0.6f)
+            translate(0.6f * sin(phase * 0.5f), rise) { drawShape(shape, zz * fade) }
+        }
+    }
 }

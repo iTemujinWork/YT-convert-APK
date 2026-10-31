@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -37,6 +38,9 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
     /** 0 = looking at you, 1 = head turned three-quarters, hair clip towards you. */
     val turn = Animatable(0f)
 
+    /** The hair follows the turn a beat later (secondary motion). */
+    val hairLag = Animatable(0f)
+
     /** Scale of the whole figure: she "comes closer" from 0.94 to 1. */
     val closeness = Animatable(0.94f)
 
@@ -46,8 +50,14 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
     /** Sideways head tilt in degrees. */
     val tilt = Animatable(0f)
 
+    /** Slow idle sway of the head in degrees, like someone listening to music. */
+    val sway = Animatable(0f)
+
     /** Vertical offset of the whole figure in art units, negative = up. */
     val hop = Animatable(0f)
+
+    /** Squash and stretch for the hop: 0 = none, negative = squashed, positive = stretched. */
+    val squash = Animatable(0f)
 
     /** Where she looks, -1..1 on both axes. */
     val gazeX = Animatable(0f)
@@ -140,8 +150,10 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         coroutineScope {
             launch { expressionBlend.go(1f, tween(200)) }
             launch { sparkles.go(if (next == Expression.HAPPY) 1f else 0f, tween(350)) }
-            launch { drop.go(if (next == Expression.SORRY) 1f else 0f, tween(350)) }
-            launch { zz.go(if (next == Expression.SLEEPY) 1f else 0f, tween(600)) }
+            launch { drop.go(if (next == Expression.SORRY) 1f else 0f, tween(450, easing = LinearOutSlowInEasing)) }
+            launch { zz.go(if (next == Expression.SLEEPY) 1f else 0f, tween(700)) }
+            // A sorry face looks down a little; the others look at you.
+            launch { gazeY.go(if (next == Expression.SORRY) 0.45f else 0f, tween(400)) }
             if (images != null) {
                 launch {
                     show(
@@ -157,33 +169,35 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         }
     }
 
-    /** She arrives: a touch closer, as if stepping up to the screen. */
+    /** She arrives: a touch closer, as if stepping up to the screen, settling softly. */
     suspend fun arrive() {
-        closeness.go(1f, tween(650, easing = FastOutSlowInEasing))
+        closeness.go(1f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow))
     }
 
-    /** A small nod and a wink. */
+    /** A small nod and a wink: a tiny lift first, the nod, a soft settle. */
     suspend fun greet() {
         if (reducedMotion) return
         if (play("koszon")) {
             show("alap")
             return
         }
+        nod.animateTo(-2f, tween(110, easing = FastOutSlowInEasing))
         wink = true
-        nod.animateTo(7f, tween(220, easing = FastOutSlowInEasing))
-        delay(240)
-        nod.animateTo(0f, tween(280, easing = FastOutSlowInEasing))
+        nod.animateTo(7f, tween(190, easing = FastOutSlowInEasing))
+        delay(300)
+        nod.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
         wink = false
     }
 
-    suspend fun blink() {
+    /** Eyes close fast and open a little slower, like real ones. */
+    suspend fun blink(deep: Boolean = false) {
         if (reducedMotion || images != null) return
         blinkFrame = 1
-        delay(40)
+        delay(30)
         blinkFrame = 2
-        delay(80)
+        delay(if (deep) 220 else 70)
         blinkFrame = 1
-        delay(45)
+        delay(60)
         blinkFrame = 0
     }
 
@@ -196,6 +210,7 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         blinkFrame = frame.coerceIn(0, 2)
     }
 
+    /** The eyes lead, the head follows a little: that is what makes a glance look real. */
     suspend fun lookAround() {
         if (reducedMotion) return
         if (play("korbenez")) {
@@ -203,14 +218,24 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
             return
         }
         val first = if (Random.nextBoolean()) -1f else 1f
-        gazeX.animateTo(first, tween(380, easing = FastOutSlowInEasing))
-        delay(650)
-        gazeX.animateTo(-first, tween(520, easing = FastOutSlowInEasing))
-        delay(650)
-        gazeX.animateTo(0f, tween(380, easing = FastOutSlowInEasing))
+        coroutineScope {
+            launch { gazeX.animateTo(first, tween(260, easing = FastOutSlowInEasing)) }
+            launch { delay(90); tilt.animateTo(first * 1.6f, tween(420, easing = FastOutSlowInEasing)) }
+        }
+        delay(Random.nextLong(500, 900))
+        if (Random.nextFloat() < 0.4f) blink()
+        coroutineScope {
+            launch { gazeX.animateTo(-first, tween(380, easing = FastOutSlowInEasing)) }
+            launch { delay(90); tilt.animateTo(-first * 1.4f, tween(520, easing = FastOutSlowInEasing)) }
+        }
+        delay(Random.nextLong(500, 900))
+        coroutineScope {
+            launch { gazeX.animateTo(0f, tween(320, easing = FastOutSlowInEasing)) }
+            launch { delay(60); tilt.animateTo(0f, tween(480, easing = FastOutSlowInEasing)) }
+        }
     }
 
-    /** Breathing, blinking, the occasional glance: runs until cancelled. */
+    /** Breathing, blinking, a slow sway, the occasional glance: runs until cancelled. */
     suspend fun live(sleepy: Boolean) {
         if (reducedMotion) return
         if (images != null) {
@@ -231,12 +256,20 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         coroutineScope {
             launch {
                 while (true) {
-                    delay(Random.nextLong(if (sleepy) 3_500 else 2_200, if (sleepy) 9_000 else 6_500))
-                    blink()
-                    if (!sleepy && Random.nextFloat() < 0.15f) {
-                        delay(170)
+                    delay(Random.nextLong(if (sleepy) 3_500 else 2_400, if (sleepy) 9_000 else 6_800))
+                    blink(deep = sleepy && Random.nextFloat() < 0.5f)
+                    if (!sleepy && Random.nextFloat() < 0.18f) {
+                        delay(160)
                         blink()
                     }
+                }
+            }
+            launch {
+                // Listening to music: the head drifts gently from side to side, never the same twice.
+                while (true) {
+                    val target = (Random.nextFloat() * 2f - 1f) * (if (sleepy) 2.2f else 1.3f)
+                    sway.animateTo(target, tween(Random.nextInt(2_800, 4_600), easing = FastOutSlowInEasing))
+                    delay(Random.nextLong(300, 1_400))
                 }
             }
             if (!sleepy) {
@@ -250,8 +283,11 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         }
     }
 
-    /** Turns so the hair clip faces you; the clip can then fill with progress. */
+    /** Turns so the hair clip faces you: a tiny anticipation, then the turn, the hair a beat behind. */
     suspend fun turnAway() {
+        if (!reducedMotion && images == null) {
+            tilt.animateTo(-2f, tween(120, easing = FastOutSlowInEasing))
+        }
         coroutineScope {
             if (images != null) {
                 launch {
@@ -260,22 +296,35 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
                 }
             }
             launch { turn.go(1f, tween(700, easing = FastOutSlowInEasing)) }
+            launch { hairLag.go(1f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)) }
+            launch { tilt.go(0f, tween(500, easing = FastOutSlowInEasing)) }
         }
     }
 
     suspend fun turnBack() {
         if (images != null) show("alap")
-        turn.go(0f, tween(600, easing = FastOutSlowInEasing))
+        coroutineScope {
+            launch { turn.go(0f, tween(600, easing = FastOutSlowInEasing)) }
+            launch { hairLag.go(0f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)) }
+        }
     }
 
-    /** Eyes closed in a big smile, a tiny hop, sparkles. */
+    /** Eyes closed in a big smile, a tiny hop with squash and stretch, sparkles. */
     suspend fun happy() {
         coroutineScope {
             launch { setExpression(Expression.HAPPY) }
             if (!reducedMotion && images == null) {
                 launch {
-                    hop.animateTo(-9f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium))
-                    hop.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
+                    squash.animateTo(-1f, tween(90, easing = FastOutSlowInEasing))
+                    coroutineScope {
+                        launch { hop.animateTo(-10f, tween(170, easing = LinearOutSlowInEasing)) }
+                        launch { squash.animateTo(1f, tween(170, easing = LinearOutSlowInEasing)) }
+                    }
+                    coroutineScope {
+                        launch { hop.animateTo(0f, tween(200, easing = FastOutSlowInEasing)) }
+                        launch { squash.animateTo(-0.7f, tween(200, easing = FastOutSlowInEasing)) }
+                    }
+                    squash.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow))
                 }
             }
         }
@@ -285,6 +334,7 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
     suspend fun celebrate() {
         if (images != null && play("vissza_orul")) {
             turn.snapTo(0f)
+            hairLag.snapTo(0f)
             setExpression(Expression.HAPPY)
             return
         }
@@ -298,11 +348,12 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         sorry()
     }
 
-    /** A kind, apologetic face with a slight tilt. */
+    /** A kind, apologetic face with a slight tilt and a small sinking of the head. */
     suspend fun sorry() {
         coroutineScope {
             launch { setExpression(Expression.SORRY) }
             launch { tilt.go(if (images == null) 5f else 0f, tween(450, easing = FastOutSlowInEasing)) }
+            launch { if (images == null) nod.go(3f, tween(500, easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -310,11 +361,15 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         coroutineScope {
             launch { setExpression(Expression.NEUTRAL) }
             launch { tilt.go(0f, tween(400)) }
+            launch { nod.go(0f, tween(400)) }
         }
     }
 
     suspend fun sleepy() {
-        setExpression(Expression.SLEEPY)
+        coroutineScope {
+            launch { setExpression(Expression.SLEEPY) }
+            launch { if (images == null) nod.go(2f, tween(900, easing = FastOutSlowInEasing)) }
+        }
     }
 }
 
