@@ -21,7 +21,12 @@ curl -fsSL -o "$tmp/SHA2-256SUMS" "https://github.com/yt-dlp/yt-dlp/releases/dow
 
 expected=$(awk '$2 == "yt-dlp" || $2 == "*yt-dlp" {print $1}' "$tmp/SHA2-256SUMS")
 if [[ -z "$expected" ]]; then echo "no checksum for yt-dlp in SHA2-256SUMS" >&2; exit 1; fi
-echo "$expected  $tmp/yt-dlp" | sha256sum -c -
+if command -v sha256sum >/dev/null 2>&1; then
+  echo "$expected  $tmp/yt-dlp" | sha256sum -c -
+else
+  # macOS has shasum instead of sha256sum
+  echo "$expected  $tmp/yt-dlp" | shasum -a 256 -c -
+fi
 
 inside=$(python3 - "$tmp/yt-dlp" <<'EOF'
 import re, sys, zipfile
@@ -35,4 +40,4 @@ if [[ "$inside" != "$tag" ]]; then echo "the file says $inside but the release i
 mkdir -p "$(dirname "$target")"
 cp "$tmp/yt-dlp" "$target"
 rm -rf "$tmp"
-echo "bundled yt-dlp $tag as $target ($(stat -c %s "$target") bytes)"
+echo "bundled yt-dlp $tag as $target ($(wc -c < "$target" | tr -d ' ') bytes)"
