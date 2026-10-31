@@ -10,11 +10,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.work.await
 import io.github.itemujinwork.dalma.data.Prefs
 import io.github.itemujinwork.dalma.engine.Engine
 import io.github.itemujinwork.dalma.engine.EngineUpdater
 import io.github.itemujinwork.dalma.engine.isCancellation
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 /**
@@ -26,7 +26,7 @@ class EngineUpdateWorker(context: Context, params: WorkerParameters) : Coroutine
     override suspend fun doWork(): Result {
         val app = applicationContext
         // Never swap the yt-dlp file under a running download.
-        val saving = WorkManager.getInstance(app).getWorkInfosByTag(Saves.TAG).await().any { it.state == WorkInfo.State.RUNNING }
+        val saving = WorkManager.getInstance(app).getWorkInfosByTagFlow(Saves.TAG).first().any { it.state == WorkInfo.State.RUNNING }
         if (saving) return Result.retry()
         val engine = Engine(app)
         try {
