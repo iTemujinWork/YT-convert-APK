@@ -1,0 +1,283 @@
+#!/usr/bin/env python3
+"""
+Turns the layered mascot SVG into code the app can draw and animate.
+
+  python3 tools/svg2compose.py            (needs: pip install svgelements)
+
+Writes:
+  app/src/main/java/io/github/itemujinwork/hanga/ui/mascot/MascotArt.kt
+      one Compose ImageVector per top-level <g id="..."> layer
+  app/src/main/res/drawable/ic_launcher_foreground.xml
+      the idle face, framed for an adaptive launcher icon
+
+Supported SVG subset (enough for flat illustrations): path/ellipse/circle/rect/line,
+solid fills and strokes with opacity, linear and radial gradients in userSpaceOnUse.
+"""
+import os
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+from svgelements import SVG, Group, Path, Shape
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SOURCE = os.path.join(ROOT, "docs", "mascot", "hanga.svg")
+KOTLIN_OUT = os.path.join(ROOT, "app", "src", "main", "java", "io", "github", "itemujinwork", "hanga", "ui", "mascot", "MascotArt.kt")
+ICON_OUT = os.path.join(ROOT, "app", "src", "main", "res", "drawable", "ic_launcher_foreground.xml")
+ICON_LAYERS = ["back", "eyes_open", "brows_soft", "mouth_smile", "front"]
+NS = {"svg": "http://www.w3.org/2000/svg"}
+
+
+def num(value):
+    text = f"{value:.2f}".rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
+def parse_color(text):
+    text = text.strip()
+    if re.fullmatch(r"#[0-9a-fA-F]{3}", text):
+        text = "#" + "".join(c * 2 for c in text[1:])
+    if not re.fullmatch(r"#[0-9a-fA-F]{6}", text):
+        raise ValueError(f"unsupported color {text!r}")
+    return text[1:].upper()
+
+
+def read_gradients(path):
+    tree = ET.parse(path)
+    gradients = {}
+    for kind in ("linearGradient", "radialGradient"):
+        for node in tree.getroot().iter(f"{{{NS['svg']}}}{kind}"):
+            if node.get("gradientUnits") != "userSpaceOnUse":
+                sys.exit(f"gradient {node.get('id')} must use userSpaceOnUse")
+            stops = []
+            for stop in node.findall("svg:stop", NS):
+                stops.append((float(stop.get("offset")), parse_color(stop.get("stop-color")),
+                              float(stop.get("stop-opacity", "1"))))
+            g = {"kind": kind, "stops": stops}
+            if kind == "linearGradient":
+                g.update({k: float(node.get(k)) for k in ("x1", "y1", "x2", "y2")})
+            else:
+                g.update({k: float(node.get(k)) for k in ("cx", "cy", "r")})
+            gradients[node.get("id")] = g
+    return gradients
+
+
+def paint(value, opacity, gradients):
+    """Returns ('solid', rrggbb, alpha) / ('gradient', dict, alpha) / None."""
+    if value is None or value == "none":
+        return None
+    match = re.fullmatch(r"url\(#([^)]+)\)", value.strip())
+    if match:
+        return ("gradient", gradients[match.group(1)], opacity)
+    return ("solid", parse_color(value), opacity)
+
+
+def collect_layers(path, gradients):
+    svg = SVG.parse(path, reify=True)
+    layers = []
+    for top in svg:
+        if not isinstance(top, Group) or not top.id or top.id in ("defs",):
+            continue
+        shapes = []
+        for element in top.select():
+            if not isinstance(element, Shape):
+                continue
+            values = element.values
+            path_obj = Path(element)
+            path_obj.reify()
+            d = path_obj.d(relative=False)
+            d = re.sub(r"-?\d+\.?\d*(?:e-?\d+)?", lambda m: num(float(m.group(0))), d)
+            opacity = float(values.get("opacity", 1))
+            fill = paint(values.get("fill", "#000000"), float(values.get("fill-opacity", 1)) * opacity, gradients)
+            stroke = paint(values.get("stroke"), float(values.get("stroke-opacity", 1)) * opacity, gradients)
+            shapes.append({
+                "d": d,
+                "fill": fill,
+                "stroke": stroke,
+                "width": float(values.get("stroke-width", 1)),
+                "cap": values.get("stroke-linecap", "butt"),
+                "join": values.get("stroke-linejoin", "miter"),
+            })
+        layers.append((top.id, shapes))
+    return layers
+
+
+def kotlin_brush(p):
+    kind, value, _ = p
+    if kind == "solid":
+        return f"SolidColor(Color(0xFF{value}))"
+    stops = ", ".join(
+        f"{num(o)}f to Color(0x{int(round(a * 255)):02X}{c})" for o, c, a in value["stops"])
+    if value["kind"] == "linearGradient":
+        return (f"Brush.linearGradient({stops}, start = Offset({num(value['x1'])}f, {num(value['y1'])}f), "
+                f"end = Offset({num(value['x2'])}f, {num(value['y2'])}f))")
+    return (f"Brush.radialGradient({stops}, center = Offset({num(value['cx'])}f, {num(value['cy'])}f), "
+            f"radius = {num(value['r'])}f)")
+
+
+def camel(name):
+    head, *rest = name.split("_")
+    return head + "".join(p.capitalize() for p in rest)
+
+
+def write_kotlin(layers):
+    lines = [
+        "// Generated by tools/svg2compose.py from docs/mascot/hanga.svg. Do not edit by hand:",
+        "// change the SVG and run the script again.",
+        "package io.github.itemujinwork.hanga.ui.mascot",
+        "",
+        "import androidx.compose.ui.geometry.Offset",
+        "import androidx.compose.ui.graphics.Brush",
+        "import androidx.compose.ui.graphics.Color",
+        "import androidx.compose.ui.graphics.SolidColor",
+        "import androidx.compose.ui.graphics.StrokeCap",
+        "import androidx.compose.ui.graphics.StrokeJoin",
+        "import androidx.compose.ui.graphics.vector.ImageVector",
+        "import androidx.compose.ui.graphics.vector.addPathNodes",
+        "import androidx.compose.ui.unit.dp",
+        "",
+        "/** The mascot's layers, all in the same 240 x 240 viewport so they stack exactly. */",
+        "internal object MascotArt {",
+        "    const val SIZE = 240f",
+        "",
+    ]
+    for name, shapes in layers:
+        lines.append(f"    val {camel(name)}: ImageVector by lazy {{")
+        lines.append(f"        layer(\"{name}\") {{")
+        for s in shapes:
+            if s["fill"]:
+                alpha = s["fill"][2]
+                extra = f", alpha = {num(alpha)}f" if alpha < 1 else ""
+                lines.append(f"            fill(\"{s['d']}\", {kotlin_brush(s['fill'])}{extra})")
+            if s["stroke"]:
+                alpha = s["stroke"][2]
+                extra = f", alpha = {num(alpha)}f" if alpha < 1 else ""
+                cap = {"round": "StrokeCap.Round", "square": "StrokeCap.Square"}.get(s["cap"], "StrokeCap.Butt")
+                join = {"round": "StrokeJoin.Round", "bevel": "StrokeJoin.Bevel"}.get(s["join"], "StrokeJoin.Miter")
+                lines.append(
+                    f"            stroke(\"{s['d']}\", {kotlin_brush(s['stroke'])}, width = {num(s['width'])}f, "
+                    f"cap = {cap}, join = {join}{extra})")
+        lines.append("        }")
+        lines.append("    }")
+        lines.append("")
+    lines += [
+        "    private inline fun layer(name: String, block: ImageVector.Builder.() -> Unit): ImageVector =",
+        "        ImageVector.Builder(",
+        "            name = name,",
+        "            defaultWidth = SIZE.dp,",
+        "            defaultHeight = SIZE.dp,",
+        "            viewportWidth = SIZE,",
+        "            viewportHeight = SIZE,",
+        "        ).apply(block).build()",
+        "",
+        "    private fun ImageVector.Builder.fill(d: String, brush: Brush, alpha: Float = 1f) {",
+        "        addPath(pathData = addPathNodes(d), fill = brush, fillAlpha = alpha)",
+        "    }",
+        "",
+        "    private fun ImageVector.Builder.stroke(",
+        "        d: String,",
+        "        brush: Brush,",
+        "        width: Float,",
+        "        cap: StrokeCap,",
+        "        join: StrokeJoin,",
+        "        alpha: Float = 1f,",
+        "    ) {",
+        "        addPath(",
+        "            pathData = addPathNodes(d),",
+        "            stroke = brush,",
+        "            strokeAlpha = alpha,",
+        "            strokeLineWidth = width,",
+        "            strokeLineCap = cap,",
+        "            strokeLineJoin = join,",
+        "        )",
+        "    }",
+        "}",
+        "",
+    ]
+    os.makedirs(os.path.dirname(KOTLIN_OUT), exist_ok=True)
+    with open(KOTLIN_OUT, "w") as f:
+        f.write("\n".join(lines))
+
+
+def xml_color(rrggbb, alpha=1.0):
+    return f"#{int(round(alpha * 255)):02X}{rrggbb}"
+
+
+def write_icon(layers):
+    by_name = dict(layers)
+    # The head fills the adaptive icon's 66dp safe zone; shoulders fall off the mask.
+    scale = 0.41
+    tx = 54 - 120 * scale
+    ty = 54 - 108 * scale
+    out = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        "<!-- Generated by tools/svg2compose.py from docs/mascot/hanga.svg. -->",
+        '<vector xmlns:android="http://schemas.android.com/apk/res/android"',
+        '    xmlns:aapt="http://schemas.android.com/aapt"',
+        '    android:width="108dp"',
+        '    android:height="108dp"',
+        '    android:viewportWidth="108"',
+        '    android:viewportHeight="108">',
+        f'    <group android:scaleX="{num(scale)}" android:scaleY="{num(scale)}" '
+        f'android:translateX="{num(tx)}" android:translateY="{num(ty)}">',
+    ]
+    for name in ICON_LAYERS:
+        for s in by_name[name]:
+            for role in ("fill", "stroke"):
+                p = s[role]
+                if not p:
+                    continue
+                attrs = [f'android:pathData="{s["d"]}"']
+                body = []
+                if p[0] == "solid":
+                    attrs.append(f'android:{role}Color="{xml_color(p[1])}"')
+                else:
+                    g = p[1]
+                    items = "".join(
+                        f'\n                    <item android:offset="{num(o)}" android:color="{xml_color(c, a)}"/>'
+                        for o, c, a in g["stops"])
+                    if g["kind"] == "linearGradient":
+                        geo = (f'android:type="linear" android:startX="{num(g["x1"])}" android:startY="{num(g["y1"])}" '
+                               f'android:endX="{num(g["x2"])}" android:endY="{num(g["y2"])}"')
+                    else:
+                        geo = (f'android:type="radial" android:centerX="{num(g["cx"])}" android:centerY="{num(g["cy"])}" '
+                               f'android:gradientRadius="{num(g["r"])}"')
+                    body.append(
+                        f'            <aapt:attr name="android:{role}Color">\n'
+                        f'                <gradient {geo}>{items}\n                </gradient>\n'
+                        f'            </aapt:attr>')
+                if p[2] < 1:
+                    attrs.append(f'android:{role}Alpha="{num(p[2])}"')
+                if role == "stroke":
+                    attrs.append(f'android:strokeWidth="{num(s["width"])}"')
+                    if s["cap"] in ("round", "square"):
+                        attrs.append(f'android:strokeLineCap="{s["cap"]}"')
+                    if s["join"] in ("round", "bevel"):
+                        attrs.append(f'android:strokeLineJoin="{s["join"]}"')
+                attr_text = "\n            ".join(attrs)
+                if body:
+                    out.append(f"        <path\n            {attr_text}>\n" + "\n".join(body) + "\n        </path>")
+                else:
+                    out.append(f"        <path\n            {attr_text} />")
+    out += ["    </group>", "</vector>", ""]
+    os.makedirs(os.path.dirname(ICON_OUT), exist_ok=True)
+    with open(ICON_OUT, "w") as f:
+        f.write("\n".join(out))
+
+
+def main():
+    gradients = read_gradients(SOURCE)
+    layers = collect_layers(SOURCE, gradients)
+    names = [n for n, _ in layers]
+    missing = [n for n in ICON_LAYERS if n not in names]
+    if missing:
+        sys.exit(f"missing layers: {missing}")
+    write_kotlin(layers)
+    write_icon(layers)
+    print("layers:", ", ".join(f"{n}({len(s)})" for n, s in layers))
+    print("wrote", os.path.relpath(KOTLIN_OUT, ROOT))
+    print("wrote", os.path.relpath(ICON_OUT, ROOT))
+
+
+if __name__ == "__main__":
+    main()

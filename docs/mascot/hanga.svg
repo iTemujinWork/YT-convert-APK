@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <!--
+    Hanga, the mascot. Layers are <g> elements with an id; tools/svg2compose.py turns each
+    layer into a Compose ImageVector so the app can blink, change mood and sway.
+    Rules for this file: absolute coordinates, gradients in userSpaceOnUse, no filters.
+  -->
+  <defs>
+    <linearGradient id="hair" gradientUnits="userSpaceOnUse" x1="120" y1="30" x2="120" y2="196">
+      <stop offset="0" stop-color="#6A3D5F"/>
+      <stop offset="1" stop-color="#4A2742"/>
+    </linearGradient>
+    <linearGradient id="hairFront" gradientUnits="userSpaceOnUse" x1="120" y1="34" x2="120" y2="176">
+      <stop offset="0" stop-color="#7B4A6F"/>
+      <stop offset="0.55" stop-color="#5E3455"/>
+      <stop offset="1" stop-color="#4E2A47"/>
+    </linearGradient>
+    <linearGradient id="hoodie" gradientUnits="userSpaceOnUse" x1="120" y1="176" x2="120" y2="240">
+      <stop offset="0" stop-color="#D7B3E8"/>
+      <stop offset="1" stop-color="#B98ED3"/>
+    </linearGradient>
+    <linearGradient id="face" gradientUnits="userSpaceOnUse" x1="120" y1="48" x2="120" y2="168">
+      <stop offset="0" stop-color="#FFE7DA"/>
+      <stop offset="1" stop-color="#FFD9C8"/>
+    </linearGradient>
+    <linearGradient id="irisL" gradientUnits="userSpaceOnUse" x1="97" y1="102" x2="97" y2="127">
+      <stop offset="0" stop-color="#3A1E3B"/>
+      <stop offset="1" stop-color="#8A4F82"/>
+    </linearGradient>
+    <linearGradient id="irisR" gradientUnits="userSpaceOnUse" x1="143" y1="102" x2="143" y2="127">
+      <stop offset="0" stop-color="#3A1E3B"/>
+      <stop offset="1" stop-color="#8A4F82"/>
+    </linearGradient>
+    <radialGradient id="blushL" gradientUnits="userSpaceOnUse" cx="85" cy="132" r="13">
+      <stop offset="0" stop-color="#FF8FAB" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#FF8FAB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blushR" gradientUnits="userSpaceOnUse" cx="155" cy="132" r="13">
+      <stop offset="0" stop-color="#FF8FAB" stop-opacity="0.65"/>
+      <stop offset="1" stop-color="#FF8FAB" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cup" gradientUnits="userSpaceOnUse" x1="0" y1="92" x2="0" y2="138">
+      <stop offset="0" stop-color="#E08CC7"/>
+      <stop offset="1" stop-color="#B9609F"/>
+    </linearGradient>
+  </defs>
+
+  <g id="back">
+    <!-- hair behind the head -->
+    <path fill="url(#hair)" d="M122 30 C80 30 50 58 48 100 C46 128 50 150 44 172 C42 182 48 192 58 192 C64 196 72 196 78 190 C84 194 92 192 96 186 L144 186 C148 192 156 194 162 190 C168 196 176 196 182 192 C192 192 198 182 196 172 C190 150 194 128 192 100 C190 58 164 30 122 30 Z"/>
+    <path fill="#3D1F37" d="M82 146 C90 170 150 170 158 146 L162 188 L78 188 Z"/>
+    <!-- hoodie -->
+    <path fill="url(#hoodie)" d="M26 240 C28 210 46 191 78 184 C92 181 106 179 120 179 C134 179 148 181 162 184 C194 191 212 210 214 240 Z"/>
+    <path fill="#B488CC" d="M84 186 C92 176 148 176 156 186 C150 198 90 198 84 186 Z"/>
+    <!-- neck -->
+    <path fill="#F4C7B4" d="M108 148 L132 148 L133 180 C126 188 114 188 107 180 Z"/>
+    <!-- drawstrings -->
+    <path fill="none" stroke="#FFF4EC" stroke-width="3.4" stroke-linecap="round" d="M109 192 C108 202 107 212 106 222"/>
+    <path fill="none" stroke="#FFF4EC" stroke-width="3.4" stroke-linecap="round" d="M131 192 C132 202 133 212 134 222"/>
+    <ellipse fill="#FFF4EC" cx="105.8" cy="225" rx="3" ry="4"/>
+    <ellipse fill="#FFF4EC" cx="134.2" cy="225" rx="3" ry="4"/>
+    <!-- a tiny embroidered note -->
+    <path fill="#FFF4EC" fill-opacity="0.9" d="M160 205 L168 202.5 L168 214 C168 216.2 165.8 217.6 163.8 217 C161.8 216.4 161.4 214.2 163 213 C164 212.3 165.3 212.3 166.2 212.8 L166.2 206 L161.6 207.4 L161.6 216.4 C161.6 218.6 159.4 220 157.4 219.4 C155.4 218.8 155 216.6 156.6 215.4 C157.6 214.7 158.9 214.7 159.8 215.2 Z"/>
+    <!-- face -->
+    <path fill="url(#face)" d="M120 48 C152 48 176 70 176 106 C176 134 160 157 137 165 C128 168.5 112 168.5 103 165 C80 157 64 134 64 106 C64 70 88 48 120 48 Z"/>
+    <!-- soft shade the fringe casts on the forehead -->
+    <path fill="#F3BFAE" fill-opacity="0.5" d="M74 117 C77 106 82 98 89 91 C97 83 104 76 109 67 C112 74 118 79 126 83 C138 88 148 94 155 101 C160 107 163 114 164 122 C160 113 154 106 146 101 C136 95 124 90 116 85 C112 82 110 79 109 76 C105 83 99 89 92 95 C85 101 79 108 74 117 Z"/>
+    <!-- blush -->
+    <ellipse fill="url(#blushL)" cx="85" cy="132" rx="13" ry="8"/>
+    <ellipse fill="url(#blushR)" cx="155" cy="132" rx="13" ry="8"/>
+    <!-- nose -->
+    <path fill="none" stroke="#E9A994" stroke-width="2" stroke-linecap="round" d="M119 127 C120.5 128.5 121.5 128.5 122.5 127.5"/>
+  </g>
+
+  <g id="eyes_open">
+    <ellipse fill="url(#irisL)" cx="97" cy="114" rx="10.5" ry="12.8"/>
+    <ellipse fill="url(#irisR)" cx="143" cy="114" rx="10.5" ry="12.8"/>
+    <ellipse fill="#2A132B" cx="97" cy="113" rx="5" ry="6.4"/>
+    <ellipse fill="#2A132B" cx="143" cy="113" rx="5" ry="6.4"/>
+    <circle fill="#FFFFFF" cx="93.2" cy="108.2" r="3.8"/>
+    <circle fill="#FFFFFF" cx="139.2" cy="108.2" r="3.8"/>
+    <circle fill="#FFFFFF" fill-opacity="0.85" cx="101" cy="119.5" r="1.7"/>
+    <circle fill="#FFFFFF" fill-opacity="0.85" cx="147" cy="119.5" r="1.7"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.4" stroke-linecap="round" d="M85.4 108 C88.8 101 105 100.2 109.6 106.6"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="2.6" stroke-linecap="round" d="M85.4 108 L81.4 104.2"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.4" stroke-linecap="round" d="M130.4 106.6 C135 100.2 151.2 101 154.6 108"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="2.6" stroke-linecap="round" d="M154.6 108 L158.6 104.2"/>
+  </g>
+
+  <g id="eyes_happy">
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.6" stroke-linecap="round" d="M86.5 117 C90 107.5 104 107.5 107.5 117"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.6" stroke-linecap="round" d="M132.5 117 C136 107.5 150 107.5 153.5 117"/>
+  </g>
+
+  <g id="eyes_closed">
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.4" stroke-linecap="round" d="M86.5 112 C90.5 119 103.5 119 107.5 112"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="3.4" stroke-linecap="round" d="M132.5 112 C136.5 119 149.5 119 153.5 112"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="2.2" stroke-linecap="round" d="M86.8 112.2 L83.6 110.4"/>
+    <path fill="none" stroke="#2E1A2E" stroke-width="2.2" stroke-linecap="round" d="M153.2 112.2 L156.4 110.4"/>
+  </g>
+
+  <g id="brows_soft">
+    <path fill="none" stroke="#5A3150" stroke-width="2.8" stroke-linecap="round" d="M88 94.5 C93 91.5 100 91 106 92.5"/>
+    <path fill="none" stroke="#5A3150" stroke-width="2.8" stroke-linecap="round" d="M134 92.5 C140 91 147 91.5 152 94.5"/>
+  </g>
+
+  <g id="brows_worried">
+    <path fill="none" stroke="#5A3150" stroke-width="2.8" stroke-linecap="round" d="M88 96 C94 95.5 101 93 106 89"/>
+    <path fill="none" stroke="#5A3150" stroke-width="2.8" stroke-linecap="round" d="M134 89 C139 93 146 95.5 152 96"/>
+  </g>
+
+  <g id="mouth_smile">
+    <path fill="none" stroke="#B24A67" stroke-width="2.6" stroke-linecap="round" d="M112 140 C115.5 145 124.5 145 128 140"/>
+  </g>
+
+  <g id="mouth_open">
+    <path fill="#A93E5B" d="M110.5 138.5 C113 151.5 127 151.5 129.5 138.5 C123.5 140.5 116.5 140.5 110.5 138.5 Z"/>
+    <path fill="#F28CA3" d="M114.6 145.6 C117.4 149.4 122.6 149.4 125.4 145.6 C122 143.8 118 143.8 114.6 145.6 Z"/>
+  </g>
+
+  <g id="mouth_o">
+    <ellipse fill="#A93E5B" cx="120" cy="143" rx="4.2" ry="5"/>
+    <ellipse fill="#F28CA3" cx="120" cy="145.2" rx="2.4" ry="1.8"/>
+  </g>
+
+  <g id="mouth_hum">
+    <path fill="none" stroke="#B24A67" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" d="M114 140.5 C115.8 143.6 118.6 143.6 120 141 C121.4 143.6 124.2 143.6 126 140.5"/>
+  </g>
+
+  <g id="front">
+    <!-- fringe and the locks that frame the face -->
+    <path fill="url(#hairFront)" d="M122 36 C164 36 190 68 185 116 C183 140 182 158 176 174 C172 177 168 177 165 172 C167 156 167 138 165 124 C164 113 161 104 155 97 C148 90 138 84 126 79 C118 75 112 70 109 63 C104 72 97 79 89 87 C82 94 77 102 74 113 C72 126 72 148 74 172 C71 177 66 177 62 173 C57 156 55 138 55 118 C55 70 82 37 122 36 Z"/>
+    <!-- strands -->
+    <path fill="none" stroke="#4A2742" stroke-opacity="0.45" stroke-width="1.6" stroke-linecap="round" d="M112 52 C118 64 130 72 146 80"/>
+    <path fill="none" stroke="#4A2742" stroke-opacity="0.45" stroke-width="1.6" stroke-linecap="round" d="M104 50 C102 62 94 72 84 82"/>
+    <path fill="none" stroke="#4A2742" stroke-opacity="0.35" stroke-width="1.4" stroke-linecap="round" d="M176 120 C176 138 174 154 171 166"/>
+    <path fill="none" stroke="#4A2742" stroke-opacity="0.35" stroke-width="1.4" stroke-linecap="round" d="M64 120 C64 138 66 154 68 166"/>
+    <!-- shine -->
+    <path fill="#9A6690" fill-opacity="0.55" d="M86 58 C96 50 110 47 122 47 C112 51 100 56 92 64 C90 62 88 60 86 58 Z"/>
+    <!-- headphones: band -->
+    <path fill="none" stroke="#F6EEF4" stroke-width="9" stroke-linecap="round" d="M56 104 C50 20 190 20 184 104"/>
+    <path fill="none" stroke="#E2CFE0" stroke-width="2.4" stroke-linecap="round" d="M61 92 C60 36 180 36 179 92"/>
+    <!-- headphones: cups -->
+    <ellipse fill="#F6EEF4" cx="58" cy="114" rx="11" ry="19"/>
+    <ellipse fill="url(#cup)" cx="55" cy="114" rx="11" ry="19.5"/>
+    <path fill="none" stroke="#F7C4E4" stroke-width="2.2" stroke-linecap="round" d="M50 104 C48 110 48 118 50 124"/>
+    <ellipse fill="#F6EEF4" cx="182" cy="114" rx="11" ry="19"/>
+    <ellipse fill="url(#cup)" cx="185" cy="114" rx="11" ry="19.5"/>
+    <path fill="none" stroke="#F7C4E4" stroke-width="2.2" stroke-linecap="round" d="M190 104 C192 110 192 118 190 124"/>
+    <!-- heather (hanga) sprig clip -->
+    <path fill="none" stroke="#6E9A6F" stroke-width="2" stroke-linecap="round" d="M138 70 C146 60 156 52 170 46"/>
+    <path fill="#86B98F" d="M141 68 C142 60 147 56 153 55 C151 61 147 65 141 68 Z"/>
+    <path fill="#74A97F" d="M147 62 C152 64 156 68 157 74 C151 72 148 68 147 62 Z"/>
+    <ellipse fill="#E58FC1" cx="143" cy="61.5" rx="3.6" ry="4.6"/>
+    <ellipse fill="#D86AA9" cx="150" cy="55.5" rx="3.4" ry="4.4"/>
+    <ellipse fill="#EC9ACB" cx="157" cy="50.5" rx="3.2" ry="4.2"/>
+    <ellipse fill="#D86AA9" cx="163.5" cy="47" rx="2.9" ry="3.8"/>
+    <ellipse fill="#F2B3D6" cx="169" cy="44.5" rx="2.4" ry="3.2"/>
+    <circle fill="#FFFFFF" fill-opacity="0.75" cx="142" cy="59.6" r="1.2"/>
+    <circle fill="#FFFFFF" fill-opacity="0.75" cx="149" cy="53.6" r="1.1"/>
+    <circle fill="#FFFFFF" fill-opacity="0.75" cx="156" cy="48.8" r="1"/>
+  </g>
+</svg>
