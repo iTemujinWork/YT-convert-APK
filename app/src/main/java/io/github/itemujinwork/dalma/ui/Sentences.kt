@@ -5,6 +5,7 @@ import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.core.FailureKind
 import io.github.itemujinwork.dalma.core.LinkCheck
 import io.github.itemujinwork.dalma.core.Outcome
+import kotlin.random.Random
 
 /** Dalma's one sentence for every way a share can end. */
 object Sentences {
@@ -23,8 +24,9 @@ object Sentences {
         -> R.string.unreachable
     }
 
-    fun forOutcome(context: Context, outcome: Outcome): String = when (outcome) {
-        is Outcome.Saved -> context.getString(R.string.saved)
+    fun forOutcome(context: Context, outcome: Outcome, variety: Int = Random.nextInt(4)): String = when (outcome) {
+        // Mostly "Elmentettem neked.", now and then "Kész is! Jó hallgatást."
+        is Outcome.Saved -> context.getString(if (variety == 0) R.string.saved_alt else R.string.saved)
         Outcome.AlreadyHave -> context.getString(R.string.already_have)
         is Outcome.Failed -> context.getString(forFailure(outcome.kind))
         is Outcome.SavedMany -> {

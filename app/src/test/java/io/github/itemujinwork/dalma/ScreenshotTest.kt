@@ -46,6 +46,8 @@ class ScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
+    private fun text(id: Int): String = ApplicationProvider.getApplicationContext<android.content.Context>().getString(id)
+
     private fun shot(name: String, content: @Composable () -> Unit) {
         compose.setContent {
             DalmaTheme {
@@ -99,16 +101,16 @@ class ScreenshotTest {
     fun sheet_turned_clip_full() = sheet("sheet_turned_100", mascot { turn.snapTo(1f); clipFill = 1f }, glow = 1f, percent = 100)
 
     @Test
-    fun sheet_saved() = sheet("sheet_saved", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, glow = 1f, sentence = "Elmentettem neked.")
+    fun sheet_saved() = sheet("sheet_saved", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, glow = 1f, sentence = text(R.string.saved))
 
     @Test
-    fun sheet_already_have() = sheet("sheet_already_have", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, sentence = "Ez már megvan.")
+    fun sheet_already_have() = sheet("sheet_already_have", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, sentence = text(R.string.already_have))
 
     @Test
-    fun sheet_no_internet() = sheet("sheet_no_internet", mascot { setExpression(Expression.SORRY); drop.snapTo(1f); tilt.snapTo(5f) }, sentence = "Nincs net. Amint lesz, elmentem.")
+    fun sheet_no_internet() = sheet("sheet_no_internet", mascot { setExpression(Expression.SORRY); drop.snapTo(1f); tilt.snapTo(5f) }, sentence = text(R.string.no_internet))
 
     @Test
-    fun sheet_private() = sheet("sheet_private", mascot { setExpression(Expression.SORRY); drop.snapTo(1f); tilt.snapTo(5f) }, sentence = "Ezt nem érem el, mert privát.")
+    fun sheet_private() = sheet("sheet_private", mascot { setExpression(Expression.SORRY); drop.snapTo(1f); tilt.snapTo(5f) }, sentence = text(R.string.private_video))
 
     @Test
     fun mascot_wink() = sheet("mascot_wink", mascot { nod.snapTo(7f); greetStill() })
@@ -145,10 +147,10 @@ class ScreenshotTest {
     fun pictures_turned_clip_filling() = sheet("pictures_turned_40", pictures { turnAway(); clipFill = 0.4f }, glow = 0.4f, percent = 40)
 
     @Test
-    fun pictures_happy() = sheet("pictures_happy", pictures { setExpression(Expression.HAPPY) }, glow = 1f, sentence = "Elmentettem neked.")
+    fun pictures_happy() = sheet("pictures_happy", pictures { setExpression(Expression.HAPPY) }, glow = 1f, sentence = text(R.string.saved))
 
     @Test
-    fun pictures_sorry() = sheet("pictures_sorry", pictures { setExpression(Expression.SORRY) }, sentence = "Ezt nem érem el, mert privát.")
+    fun pictures_sorry() = sheet("pictures_sorry", pictures { setExpression(Expression.SORRY) }, sentence = text(R.string.private_video))
 
     @Test
     fun pictures_sleepy() = sheet("pictures_sleepy", pictures { setExpression(Expression.SLEEPY) })

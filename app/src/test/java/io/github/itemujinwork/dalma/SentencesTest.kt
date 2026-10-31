@@ -43,7 +43,8 @@ class SentencesTest {
     fun sentencesInHungarian() {
         val c = context(hu)
         val song = SavedSong(videoId = "dQw4w9WgXcQ", uri = "content://x", fileName = "a.opus", savedAtMillis = 0)
-        assertEquals("Elmentettem neked.", Sentences.forOutcome(c, Outcome.Saved(song)))
+        assertEquals("Elmentettem neked.", Sentences.forOutcome(c, Outcome.Saved(song), variety = 1))
+        assertEquals("Kész is! Jó hallgatást.", Sentences.forOutcome(c, Outcome.Saved(song), variety = 0))
         assertEquals("Ez már megvan.", Sentences.forOutcome(c, Outcome.AlreadyHave))
         assertEquals("Elmentettem mind a 12-t.", Sentences.forOutcome(c, Outcome.SavedMany(12, 0, 0, false)))
         assertEquals("Elmentettem 10-et, 2-t nem értem\u00A0el.", Sentences.forOutcome(c, Outcome.SavedMany(10, 0, 2, false)))

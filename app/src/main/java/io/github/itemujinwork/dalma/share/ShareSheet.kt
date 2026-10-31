@@ -69,6 +69,7 @@ private const val DISMISS_AFTER_FAILURE = 5_000L
  * vibration, one sentence, and the sheet slides away by itself.
  */
 @OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("InlinedApi")
 @Composable
 fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
     val context = LocalContext.current

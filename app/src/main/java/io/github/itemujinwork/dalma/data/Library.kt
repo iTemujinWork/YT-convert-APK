@@ -1,7 +1,7 @@
 package io.github.itemujinwork.dalma.data
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.core.LibraryCodec
 import io.github.itemujinwork.dalma.core.SavedSong
 import kotlinx.coroutines.Dispatchers
@@ -20,7 +20,7 @@ class Library(context: Context, private val store: MusicStore = MusicStore(conte
     /** The song if its file is still there; a vanished file is forgotten so it gets saved again. */
     suspend fun findExisting(videoId: String): SavedSong? {
         val song = all().firstOrNull { it.videoId == videoId } ?: return null
-        if (store.exists(Uri.parse(song.uri))) return song
+        if (store.exists(song.uri.toUri())) return song
         remove(videoId)
         return null
     }
@@ -33,10 +33,10 @@ class Library(context: Context, private val store: MusicStore = MusicStore(conte
     suspend fun writeArchive(target: File) = withContext(Dispatchers.IO) {
         mutex.withLock {
             val songs = read()
-            val ids = songs.mapNotNull { song -> store.idOf(Uri.parse(song.uri))?.let { it to song } }
+            val ids = songs.mapNotNull { song -> store.idOf(song.uri.toUri())?.let { it to song } }
             val existing = store.existingIds(ids.map { it.first })
             val kept = songs.filter { song ->
-                val id = store.idOf(Uri.parse(song.uri))
+                val id = store.idOf(song.uri.toUri())
                 id == null || id in existing
             }
             if (kept.size != songs.size) write(kept)
