@@ -8,19 +8,32 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.theme.DalmaColors
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 private class Variants(val eyeL: String, val eyeR: String, val mouth: String, val browL: String, val browR: String)
@@ -33,9 +46,9 @@ private fun variants(expression: Expression): Variants = when (expression) {
 }
 
 /**
- * Dalma, drawn from the vector layers. The 240 x 240 art box is scaled to the width of
- * the composable and aligned to its bottom edge, so her shoulders run off the screen
- * the way the mock-ups show.
+ * Dalma. The square art box is scaled to the width of the composable and aligned to its
+ * bottom edge, so her shoulders run off the screen the way the mock-ups show. Drawn from
+ * the vector layers, or from the AI-made pictures when the app has them.
  */
 @Composable
 fun Mascot(
@@ -66,19 +79,78 @@ fun Mascot(
         ).value
     }
 
+    // While a clip plays, redraw every frame so Android can show the next picture.
+    val playing = state.playing
+    var frame by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(playing) {
+        if (playing != null) {
+            while (true) withFrameNanos { frame = it }
+        }
+    }
+
     val semanticsModifier = if (contentDescription != null) modifier.semantics { this.contentDescription = contentDescription } else modifier
     Canvas(semanticsModifier) {
-        val art = MascotArt.SIZE
-        val s = size.width / art
-        val top = size.height - art * s
-        withTransform({
-            translate(0f, top)
-            scale(s, s, Offset.Zero)
-        }) {
-            drawMascot(state, breath, drift)
+        @Suppress("UNUSED_VARIABLE") val tick = frame
+        val images = state.images
+        if (images != null) {
+            drawPictures(state, images, breath)
+        } else {
+            val art = MascotArt.SIZE
+            val s = size.width / art
+            val top = size.height - art * s
+            withTransform({
+                translate(0f, top)
+                scale(s, s, Offset.Zero)
+            }) {
+                drawMascot(state, breath, drift)
+            }
         }
     }
 }
+
+// ---------------------------------------------------------------- pictures
+
+private fun DrawScope.drawPictures(state: MascotState, images: MascotImages, breath: Float) {
+    val side = size.width
+    val top = size.height - side
+    val closeness = state.closeness.value
+    val dst = IntSize(side.roundToInt(), side.roundToInt())
+    scale(closeness, closeness, pivot = Offset(size.width / 2f, size.height)) {
+        translate(0f, top + state.hop.value * side / MascotArt.SIZE - 0.004f * side * breath) {
+            val clip = state.playing
+            if (clip != null) {
+                drawIntoCanvas { canvas ->
+                    clip.drawable.setBounds(0, 0, dst.width, dst.height)
+                    clip.drawable.draw(canvas.nativeCanvas)
+                }
+            } else {
+                val blend = state.stillBlend.value
+                val previous = state.previousStill
+                if (blend < 1f && previous != null) {
+                    images.still(previous)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = 1f - blend) }
+                }
+                images.still(state.still)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = blend) }
+                if (state.still == "fordul") state.clipFill?.let { drawPictureClipFill(images, it, dst) }
+            }
+        }
+    }
+}
+
+/** The empty part of the hair clip is painted deep teal through the clip's mask. */
+private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst: IntSize) {
+    val mask = images.clipMask ?: return
+    val box = images.clipBox ?: return
+    val scale = dst.width.toFloat() / images.size
+    val top = box[1] * scale
+    val bottom = box[3] * scale
+    val emptyBottom = top + (bottom - top) * (1f - fill.coerceIn(0f, 1f))
+    if (emptyBottom <= top) return
+    clipRect(box[0] * scale - 2f, top - 2f, box[2] * scale + 2f, emptyBottom) {
+        drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, colorFilter = ColorFilter.tint(DalmaColors.DeepTeal, BlendMode.SrcIn))
+    }
+}
+
+// ---------------------------------------------------------------- vector layers
 
 private fun DrawScope.drawMascot(state: MascotState, breath: Float, drift: Float) {
     val turn = state.turn.value
@@ -92,7 +164,7 @@ private fun DrawScope.drawMascot(state: MascotState, breath: Float, drift: Float
             scale(1f + 0.008f * breath, 1f + 0.014f * breath, pivot = Offset(120f, 240f)) {
                 drawLayer("body")
             }
-            // The head sits on the neck, nods and tilts around it, and rises with each breath.
+            // The head sits on the neck, tilts around it, and rises with each breath.
             withTransform({
                 translate(0f, -1.6f * breath)
                 rotate(state.tilt.value, pivot = neck)

@@ -141,18 +141,16 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
             mascot.clipFill = 1f
             glow = 1f
             delay(if (reducedMotion) 0L else 260L)
-            mascot.turnBack()
             mascot.clipFill = null
-            mascot.happy()
+            mascot.celebrate()
             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             sky.shoot()
             sentence = Sentences.forOutcome(context, outcome)
             dismissAfter(DISMISS_AFTER_SUCCESS)
         } else {
-            mascot.turnBack()
             mascot.clipFill = null
             glow = 0f
-            mascot.sorry()
+            mascot.apologize()
             sentence = if (outcome != null) Sentences.forOutcome(context, outcome) else context.getString(R.string.no_internet)
             dismissAfter(DISMISS_AFTER_FAILURE)
         }

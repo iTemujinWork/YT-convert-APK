@@ -1,5 +1,6 @@
 package io.github.itemujinwork.dalma.ui.mascot
 
+import android.graphics.drawable.AnimatedImageDrawable
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -12,6 +13,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -24,9 +26,12 @@ enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY }
 /**
  * Everything that moves on Dalma, plus the little choreographies (greeting, turning,
  * being happy...). The composable [Mascot] draws whatever this state says.
+ *
+ * Two bodies, one mind: with the vector layers the moves are animated here; when the
+ * AI-made pictures exist ([images]), the same calls play her clips instead.
  */
 @Stable
-class MascotState(val reducedMotion: Boolean) {
+class MascotState(val reducedMotion: Boolean, internal val images: MascotImages? = null) {
     /** 0 = looking at you, 1 = head turned three-quarters, hair clip towards you. */
     val turn = Animatable(0f)
 
@@ -68,7 +73,57 @@ class MascotState(val reducedMotion: Boolean) {
     /** Download progress painted into the hair clip, `null` when idle. */
     var clipFill by mutableStateOf<Float?>(null)
 
+    // --- The picture body ---
+
+    /** The still picture to show when no clip plays. */
+    internal var still by mutableStateOf("alap")
+        private set
+    internal var previousStill by mutableStateOf<String?>(null)
+        private set
+
+    /** 0..1 cross-fade from [previousStill] to [still]. */
+    internal val stillBlend = Animatable(1f)
+
+    /** The clip playing right now, if any. */
+    internal var playing by mutableStateOf<ClipAsset?>(null)
+        private set
+
+    val usesPictures: Boolean get() = images != null
+
     private fun ms(millis: Int) = if (reducedMotion) 0 else millis
+
+    private suspend fun show(name: String) {
+        if (still == name) return
+        previousStill = still
+        still = name
+        stillBlend.snapTo(0f)
+        stillBlend.animateTo(1f, tween(ms(240)))
+    }
+
+    /** Plays a clip once (or loops it) and returns false when there is no such clip. */
+    private suspend fun play(name: String, loop: Boolean = false): Boolean {
+        val clip = images?.clip(name) ?: return false
+        if (reducedMotion) return false
+        stopClip()
+        clip.drawable.repeatCount = if (loop) AnimatedImageDrawable.REPEAT_INFINITE else 0
+        playing = clip
+        clip.drawable.start()
+        if (loop) return true
+        try {
+            delay(clip.durationMillis)
+        } finally {
+            if (playing === clip) {
+                clip.drawable.stop()
+                playing = null
+            }
+        }
+        return true
+    }
+
+    private fun stopClip() {
+        playing?.drawable?.stop()
+        playing = null
+    }
 
     suspend fun setExpression(next: Expression) {
         if (next == expression) return
@@ -80,6 +135,18 @@ class MascotState(val reducedMotion: Boolean) {
             launch { sparkles.animateTo(if (next == Expression.HAPPY) 1f else 0f, tween(ms(350))) }
             launch { drop.animateTo(if (next == Expression.SORRY) 1f else 0f, tween(ms(350))) }
             launch { zz.animateTo(if (next == Expression.SLEEPY) 1f else 0f, tween(ms(600))) }
+            if (images != null) {
+                launch {
+                    show(
+                        when (next) {
+                            Expression.NEUTRAL -> if (turn.value > 0.5f) "fordul" else "alap"
+                            Expression.HAPPY -> "orul"
+                            Expression.SORRY -> "bocsanat"
+                            Expression.SLEEPY -> "almos"
+                        },
+                    )
+                }
+            }
         }
     }
 
@@ -91,6 +158,10 @@ class MascotState(val reducedMotion: Boolean) {
     /** A small nod and a wink. */
     suspend fun greet() {
         if (reducedMotion) return
+        if (play("koszon")) {
+            show("alap")
+            return
+        }
         wink = true
         nod.animateTo(7f, tween(220, easing = FastOutSlowInEasing))
         delay(240)
@@ -99,7 +170,7 @@ class MascotState(val reducedMotion: Boolean) {
     }
 
     suspend fun blink() {
-        if (reducedMotion) return
+        if (reducedMotion || images != null) return
         blinkFrame = 1
         delay(40)
         blinkFrame = 2
@@ -120,6 +191,10 @@ class MascotState(val reducedMotion: Boolean) {
 
     suspend fun lookAround() {
         if (reducedMotion) return
+        if (play("korbenez")) {
+            show("alap")
+            return
+        }
         val first = if (Random.nextBoolean()) -1f else 1f
         gazeX.animateTo(first, tween(380, easing = FastOutSlowInEasing))
         delay(650)
@@ -131,6 +206,21 @@ class MascotState(val reducedMotion: Boolean) {
     /** Breathing, blinking, the occasional glance: runs until cancelled. */
     suspend fun live(sleepy: Boolean) {
         if (reducedMotion) return
+        if (images != null) {
+            try {
+                while (true) {
+                    val loop = play(if (sleepy) "almos" else "pislog", loop = true)
+                    if (!loop || sleepy) {
+                        delay(Long.MAX_VALUE)
+                    }
+                    delay(Random.nextLong(9_000, 22_000))
+                    stopClip()
+                    lookAround()
+                }
+            } finally {
+                stopClip()
+            }
+        }
         coroutineScope {
             launch {
                 while (true) {
@@ -153,11 +243,21 @@ class MascotState(val reducedMotion: Boolean) {
         }
     }
 
+    /** Turns so the hair clip faces you; the clip can then fill with progress. */
     suspend fun turnAway() {
-        turn.animateTo(1f, tween(ms(700), easing = FastOutSlowInEasing))
+        coroutineScope {
+            if (images != null) {
+                launch {
+                    if (!play("fordul")) delay(ms(400).toLong())
+                    show("fordul")
+                }
+            }
+            launch { turn.animateTo(1f, tween(ms(700), easing = FastOutSlowInEasing)) }
+        }
     }
 
     suspend fun turnBack() {
+        if (images != null) show("alap")
         turn.animateTo(0f, tween(ms(600), easing = FastOutSlowInEasing))
     }
 
@@ -165,7 +265,7 @@ class MascotState(val reducedMotion: Boolean) {
     suspend fun happy() {
         coroutineScope {
             launch { setExpression(Expression.HAPPY) }
-            if (!reducedMotion) {
+            if (!reducedMotion && images == null) {
                 launch {
                     hop.animateTo(-9f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium))
                     hop.animateTo(0f, spring(dampingRatio = 0.45f, stiffness = Spring.StiffnessMediumLow))
@@ -174,11 +274,28 @@ class MascotState(val reducedMotion: Boolean) {
         }
     }
 
+    /** The download is done: she turns back and is happy (one clip when she has one). */
+    suspend fun celebrate() {
+        if (images != null && play("vissza_orul")) {
+            turn.snapTo(0f)
+            setExpression(Expression.HAPPY)
+            return
+        }
+        turnBack()
+        happy()
+    }
+
+    /** Something went wrong: she turns back with a kind, apologetic face. */
+    suspend fun apologize() {
+        turnBack()
+        sorry()
+    }
+
     /** A kind, apologetic face with a slight tilt. */
     suspend fun sorry() {
         coroutineScope {
             launch { setExpression(Expression.SORRY) }
-            launch { tilt.animateTo(5f, tween(ms(450), easing = FastOutSlowInEasing)) }
+            launch { tilt.animateTo(if (images == null) 5f else 0f, tween(ms(450), easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -197,5 +314,6 @@ class MascotState(val reducedMotion: Boolean) {
 @Composable
 fun rememberMascotState(): MascotState {
     val reduced = LocalReducedMotion.current
-    return remember(reduced) { MascotState(reduced) }
+    val context = LocalContext.current
+    return remember(reduced) { MascotState(reduced, MascotAssets.load(context)) }
 }
