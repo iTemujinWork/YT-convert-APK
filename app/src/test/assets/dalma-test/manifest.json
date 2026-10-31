@@ -1,0 +1,32 @@
+{
+  "stills": {
+    "alap": "alap.png",
+    "fordul": "fordul.png",
+    "orul": "orul.png",
+    "bocsanat": "bocsanat.png",
+    "almos": "almos.png",
+    "ikon": "ikon.png"
+  },
+  "clips": {
+    "vissza_orul": {
+      "file": "vissza_orul.webp",
+      "frames": 13,
+      "fps": 8
+    },
+    "pislog": {
+      "file": "pislog.webp",
+      "frames": 17,
+      "fps": 8
+    }
+  },
+  "clip_mask": {
+    "file": "clip_mask.png",
+    "box": [
+      245,
+      97,
+      278,
+      127
+    ],
+    "size": 384
+  }
+}

@@ -2,6 +2,8 @@ package io.github.itemujinwork.dalma.ui.mascot
 
 import android.graphics.drawable.AnimatedImageDrawable
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -92,12 +94,17 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
 
     private fun ms(millis: Int) = if (reducedMotion) 0 else millis
 
+    /** Animates, or jumps when motion is off (no frame clock needed then: good for screenshots too). */
+    private suspend fun Animatable<Float, AnimationVector1D>.go(target: Float, spec: AnimationSpec<Float>) {
+        if (reducedMotion) snapTo(target) else animateTo(target, spec)
+    }
+
     private suspend fun show(name: String) {
         if (still == name) return
         previousStill = still
         still = name
         stillBlend.snapTo(0f)
-        stillBlend.animateTo(1f, tween(ms(240)))
+        stillBlend.go(1f, tween(240))
     }
 
     /** Plays a clip once (or loops it) and returns false when there is no such clip. */
@@ -131,10 +138,10 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
         expression = next
         expressionBlend.snapTo(0f)
         coroutineScope {
-            launch { expressionBlend.animateTo(1f, tween(ms(200))) }
-            launch { sparkles.animateTo(if (next == Expression.HAPPY) 1f else 0f, tween(ms(350))) }
-            launch { drop.animateTo(if (next == Expression.SORRY) 1f else 0f, tween(ms(350))) }
-            launch { zz.animateTo(if (next == Expression.SLEEPY) 1f else 0f, tween(ms(600))) }
+            launch { expressionBlend.go(1f, tween(200)) }
+            launch { sparkles.go(if (next == Expression.HAPPY) 1f else 0f, tween(350)) }
+            launch { drop.go(if (next == Expression.SORRY) 1f else 0f, tween(350)) }
+            launch { zz.go(if (next == Expression.SLEEPY) 1f else 0f, tween(600)) }
             if (images != null) {
                 launch {
                     show(
@@ -152,7 +159,7 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
 
     /** She arrives: a touch closer, as if stepping up to the screen. */
     suspend fun arrive() {
-        closeness.animateTo(1f, tween(ms(650), easing = FastOutSlowInEasing))
+        closeness.go(1f, tween(650, easing = FastOutSlowInEasing))
     }
 
     /** A small nod and a wink. */
@@ -252,13 +259,13 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
                     show("fordul")
                 }
             }
-            launch { turn.animateTo(1f, tween(ms(700), easing = FastOutSlowInEasing)) }
+            launch { turn.go(1f, tween(700, easing = FastOutSlowInEasing)) }
         }
     }
 
     suspend fun turnBack() {
         if (images != null) show("alap")
-        turn.animateTo(0f, tween(ms(600), easing = FastOutSlowInEasing))
+        turn.go(0f, tween(600, easing = FastOutSlowInEasing))
     }
 
     /** Eyes closed in a big smile, a tiny hop, sparkles. */
@@ -295,14 +302,14 @@ class MascotState(val reducedMotion: Boolean, internal val images: MascotImages?
     suspend fun sorry() {
         coroutineScope {
             launch { setExpression(Expression.SORRY) }
-            launch { tilt.animateTo(if (images == null) 5f else 0f, tween(ms(450), easing = FastOutSlowInEasing)) }
+            launch { tilt.go(if (images == null) 5f else 0f, tween(450, easing = FastOutSlowInEasing)) }
         }
     }
 
     suspend fun neutral() {
         coroutineScope {
             launch { setExpression(Expression.NEUTRAL) }
-            launch { tilt.animateTo(0f, tween(ms(400))) }
+            launch { tilt.go(0f, tween(400)) }
         }
     }
 

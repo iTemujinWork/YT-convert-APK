@@ -21,10 +21,11 @@ import numpy as np
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "app", "src", "main", "assets", "dalma")
-STILL_SIZE = 1024
-CLIP_SIZE = 640
-FPS = 24
+# Overridable for test fixtures: DALMA_OUT, DALMA_STILL_SIZE, DALMA_CLIP_SIZE, DALMA_FPS
+OUT = os.environ.get("DALMA_OUT") or os.path.join(ROOT, "app", "src", "main", "assets", "dalma")
+STILL_SIZE = int(os.environ.get("DALMA_STILL_SIZE", "1024"))
+CLIP_SIZE = int(os.environ.get("DALMA_CLIP_SIZE", "640"))
+FPS = int(os.environ.get("DALMA_FPS", "24"))
 
 STILLS = {"alap": "dalma_alap", "fordul": "dalma_fordul", "orul": "dalma_orul", "bocsanat": "dalma_bocsanat", "almos": "dalma_almos", "ikon": "dalma_ikon"}
 CLIPS = {"fordul": "dalma_fordul", "vissza_orul": "dalma_vissza_orul", "pislog": "dalma_pislog", "almos": "dalma_almos", "koszon": "dalma_koszon", "korbenez": "dalma_korbenez"}

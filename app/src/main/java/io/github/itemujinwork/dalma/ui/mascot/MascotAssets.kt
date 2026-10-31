@@ -31,24 +31,21 @@ internal class MascotImages(
 
 internal object MascotAssets {
     private const val TAG = "DalmaAssets"
-    private const val FOLDER = "dalma"
+    const val FOLDER = "dalma"
 
-    @Volatile
-    private var loaded = false
-    private var images: MascotImages? = null
+    private val cache = HashMap<String, MascotImages?>()
 
     /** Loads once (a few hundred milliseconds the first time), `null` when there are no pictures. */
-    fun load(context: Context): MascotImages? {
-        if (loaded) return images
-        synchronized(this) {
-            if (loaded) return images
-            images = try {
-                read(context.applicationContext)
+    fun load(context: Context, folder: String = FOLDER): MascotImages? {
+        synchronized(cache) {
+            if (cache.containsKey(folder)) return cache[folder]
+            val images = try {
+                read(context.applicationContext, folder)
             } catch (e: Exception) {
                 Log.w(TAG, "mascot pictures unusable, using the vector Dalma", e)
                 null
             }
-            loaded = true
+            cache[folder] = images
             return images
         }
     }
@@ -58,10 +55,10 @@ internal object MascotAssets {
         Thread({ load(context) }, "dalma-assets").start()
     }
 
-    private fun read(context: Context): MascotImages? {
+    private fun read(context: Context, folder: String): MascotImages? {
         val assets = context.assets
         val manifestText = try {
-            assets.open("$FOLDER/manifest.json").bufferedReader().readText()
+            assets.open("$folder/manifest.json").bufferedReader().readText()
         } catch (_: Exception) {
             return null
         }
@@ -70,7 +67,7 @@ internal object MascotAssets {
         val stillNames = manifest.optJSONObject("stills") ?: JSONObject()
         for (key in stillNames.keys()) {
             val file = stillNames.getString(key)
-            val bitmap = assets.open("$FOLDER/$file").use { BitmapFactory.decodeStream(it) } ?: continue
+            val bitmap = assets.open("$folder/$file").use { BitmapFactory.decodeStream(it) } ?: continue
             stills[key] = bitmap.asImageBitmap()
         }
         if (stills["alap"] == null) return null
@@ -80,7 +77,7 @@ internal object MascotAssets {
         for (key in clipEntries.keys()) {
             val entry = clipEntries.getJSONObject(key)
             try {
-                val source = ImageDecoder.createSource(assets, "$FOLDER/${entry.getString("file")}")
+                val source = ImageDecoder.createSource(assets, "$folder/${entry.getString("file")}")
                 val drawable = ImageDecoder.decodeDrawable(source) as? AnimatedImageDrawable ?: continue
                 val frames = entry.optInt("frames", 0)
                 val fps = entry.optInt("fps", 24).coerceAtLeast(1)
@@ -95,7 +92,7 @@ internal object MascotAssets {
         var box: IntArray? = null
         var size = stills["alap"]!!.width
         manifest.optJSONObject("clip_mask")?.let { entry ->
-            mask = runCatching { assets.open("$FOLDER/${entry.getString("file")}").use { BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
+            mask = runCatching { assets.open("$folder/${entry.getString("file")}").use { BitmapFactory.decodeStream(it) }?.asImageBitmap() }.getOrNull()
             val array = entry.optJSONArray("box")
             if (array != null && array.length() == 4) box = IntArray(4) { array.getInt(it) }
             size = entry.optInt("size", size)
