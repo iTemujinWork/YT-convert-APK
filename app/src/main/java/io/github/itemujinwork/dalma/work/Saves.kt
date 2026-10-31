@@ -6,7 +6,6 @@ import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import io.github.itemujinwork.dalma.core.Target
@@ -26,7 +25,6 @@ object Saves {
             .setInputData(Protocol.targetData(target))
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.LINEAR, 30, TimeUnit.SECONDS)
-            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
             .addTag(TAG)
             .build()
         WorkManager.getInstance(context).enqueueUniqueWork(uniqueName(target), ExistingWorkPolicy.KEEP, request)
