@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-group = "io.github.itemujinwork.hanga"
+group = "io.github.itemujinwork.dalma"
 version = "1.0.0"
 
 java {
@@ -27,9 +27,9 @@ dependencies {
 
 tasks.test {
     // Integration tests that drive a real yt-dlp + ffmpeg run only when asked:
-    //   ./gradlew -p core test -Dhanga.engineTests=true
-    systemProperty("hanga.engineTests", System.getProperty("hanga.engineTests") ?: "false")
-    System.getProperty("hanga.ytdlp")?.let { systemProperty("hanga.ytdlp", it) }
+    //   ./gradlew -p core test -Ddalma.engineTests=true
+    systemProperty("dalma.engineTests", System.getProperty("dalma.engineTests") ?: "false")
+    System.getProperty("dalma.ytdlp")?.let { systemProperty("dalma.ytdlp", it) }
     testLogging {
         events("failed", "skipped")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

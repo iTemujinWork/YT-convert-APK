@@ -18,4 +18,4 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "hanga-core"
+rootProject.name = "dalma-core"

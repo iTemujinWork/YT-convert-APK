@@ -1,0 +1,13 @@
+{
+  "background": "#0E1B19",
+  "card": "#16302B",
+  "always": ["hair_back", "body", "head", "blush", "nose", "hair_front", "clip"],
+  "moods": {
+    "alap":      ["eye_l_open", "eye_r_open", "brow_l", "brow_r", "mouth_smile"],
+    "koszon":    ["eye_l_open", "eye_r_closed", "brow_l", "brow_r", "mouth_smile"],
+    "pislog":    ["eye_l_closed", "eye_r_closed", "brow_l", "brow_r", "mouth_smile"],
+    "orul":      ["eye_l_happy", "eye_r_happy", "brow_l", "brow_r", "mouth_happy", "sparkles"],
+    "bocsanat":  ["eye_l_open", "eye_r_open", "brow_l_sorry", "brow_r_sorry", "mouth_sorry", "drop"],
+    "almos":     ["eye_l_sleepy", "eye_r_sleepy", "brow_l", "brow_r", "mouth_sleepy", "zz"]
+  }
+}

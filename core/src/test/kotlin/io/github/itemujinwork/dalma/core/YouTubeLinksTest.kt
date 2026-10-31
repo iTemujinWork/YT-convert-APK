@@ -1,4 +1,4 @@
-package io.github.itemujinwork.hanga.core
+package io.github.itemujinwork.dalma.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -7,7 +7,8 @@ import org.junit.Test
 class YouTubeLinksTest {
     private val id = "dQw4w9WgXcQ"
 
-    private fun videoId(text: String?): String? = YouTubeLinks.findVideo(text)?.videoId
+    private fun videoId(text: String?): String? = (YouTubeLinks.find(text) as? Target.Video)?.videoId
+    private fun listId(text: String?): String? = (YouTubeLinks.find(text) as? Target.Playlist)?.listId
 
     @Test
     fun `recognises every common link shape`() {
@@ -56,14 +57,23 @@ class YouTubeLinksTest {
     }
 
     @Test
-    fun `canonical url drops everything but the id`() {
-        val link = YouTubeLinks.findVideo("https://www.youtube.com/watch?v=$id&list=PL123&index=4&t=30s")!!
-        assertEquals("https://www.youtube.com/watch?v=$id", link.canonicalUrl)
+    fun `a song shared from a playlist means that one song`() {
+        val target = YouTubeLinks.find("https://www.youtube.com/watch?v=$id&list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG&index=4&t=30s")
+        assertEquals(Target.Video(id), target)
+        assertEquals("https://www.youtube.com/watch?v=$id", target!!.canonicalUrl)
     }
 
     @Test
-    fun `playlists, channels and other sites are told apart`() {
-        assertEquals(LinkCheck.PlaylistOnly, YouTubeLinks.check("https://www.youtube.com/playlist?list=PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG"))
+    fun `a playlist page means the whole list`() {
+        val list = "PLx0sYbCqOb8TBPRdmBHs5Iftvv9TPboYG"
+        assertEquals(list, listId("https://www.youtube.com/playlist?list=$list&si=abc"))
+        assertEquals(list, listId("https://music.youtube.com/playlist?list=$list"))
+        assertEquals("https://www.youtube.com/playlist?list=$list", YouTubeLinks.find("https://youtube.com/playlist?list=$list")!!.canonicalUrl)
+        assertEquals("OLAK5uy_abc", listId("https://music.youtube.com/browse/VLOLAK5uy_abc?list=OLAK5uy_abc"))
+    }
+
+    @Test
+    fun `channels and other sites are told apart`() {
         assertEquals(LinkCheck.NotAVideo, YouTubeLinks.check("https://www.youtube.com/@SomeChannel"))
         assertEquals(LinkCheck.NotAVideo, YouTubeLinks.check("https://www.youtube.com/"))
         assertEquals(LinkCheck.NotAVideo, YouTubeLinks.check("https://www.youtube.com/watch?v=tooShort"))
@@ -88,12 +98,12 @@ class YouTubeLinksTest {
         assertNull(videoId("https://www.youtube.com/watch?v=$id" + "x"))
         assertNull(videoId("https://www.youtube.com/watch?v=--exec_rm_"))
         assertNull(videoId("https://youtu.be/../../etc"))
+        assertNull(listId("https://www.youtube.com/playlist?list=PL%20rm%20-rf"))
     }
 
     @Test
     fun `an id that starts with a dash stays a plain url argument`() {
         // Valid YouTube ids can start with "-"; the canonical URL keeps it away from option parsing.
-        val link = YouTubeLinks.findVideo("https://youtu.be/-abcdefghij")!!
-        assertEquals("https://www.youtube.com/watch?v=-abcdefghij", link.canonicalUrl)
+        assertEquals("https://www.youtube.com/watch?v=-abcdefghij", YouTubeLinks.find("https://youtu.be/-abcdefghij")!!.canonicalUrl)
     }
 }

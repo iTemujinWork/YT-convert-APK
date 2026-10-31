@@ -1,4 +1,4 @@
-package io.github.itemujinwork.hanga.core
+package io.github.itemujinwork.dalma.core
 
 import kotlinx.serialization.Serializable
 
@@ -20,12 +20,13 @@ enum class FailureKind {
     MEMBERS_ONLY,
     REGION_BLOCKED,
     LIVE,
+    NOT_YOUTUBE,
     UNKNOWN,
     ;
 
     /** Nothing we could do on our side changes these. */
     val isFinal: Boolean
-        get() = this in setOf(DISK_FULL, UNAVAILABLE, PRIVATE, AGE_RESTRICTED, MEMBERS_ONLY, REGION_BLOCKED, LIVE)
+        get() = this in setOf(DISK_FULL, UNAVAILABLE, PRIVATE, AGE_RESTRICTED, MEMBERS_ONLY, REGION_BLOCKED, LIVE, NOT_YOUTUBE)
 }
 
 data class Failure(val kind: FailureKind, val detail: String)
@@ -42,7 +43,7 @@ object ErrorClassifier {
             FailureKind.ENGINE_BROKEN,
             "modulenotfounderror", "no module named", "importerror", "syntaxerror", "zipimport",
             "badzipfile", "is not a zip file", "can't find '__main__'", "fatal python error",
-            "failed to initialize", "cannot run program", "error=13, permission denied",
+            "failed to initialize", "cannot run program", "error=13, permission denied", "exec format error",
         ),
         Rule(FailureKind.BOT_CHECK, "not a bot", "confirm you’re not", "confirm you're not", "captcha"),
         Rule(FailureKind.AGE_RESTRICTED, "confirm your age", "age-restricted", "age restricted", "inappropriate for some users"),
@@ -50,7 +51,7 @@ object ErrorClassifier {
             FailureKind.MEMBERS_ONLY,
             "members-only", "members only", "join this channel", "channel's members", "requires payment", "youtube premium",
         ),
-        Rule(FailureKind.PRIVATE, "private video", "video is private", "this video has been made private"),
+        Rule(FailureKind.PRIVATE, "private video", "video is private", "this video has been made private", "private playlist", "playlist does not exist"),
         Rule(
             FailureKind.REGION_BLOCKED,
             "not available in your country", "available in your country", "geo restriction", "geo-restrict",
@@ -97,7 +98,7 @@ object ErrorClassifier {
         Rule(
             FailureKind.PROCESSING,
             "postprocessing", "ffmpeg", "ffprobe", "conversion failed", "embedthumbnail", "unable to embed",
-            "error opening output", "invalid data found when processing input", "audio conversion failed",
+            "error opening output", "invalid data found when processing input", "audio conversion failed", "mutagen",
         ),
     )
 
@@ -111,9 +112,9 @@ object ErrorClassifier {
 
     /** Prefer what yt-dlp itself called an error over warnings and progress noise. */
     private fun errorLines(text: String): String =
-        text.lineSequence().filter { it.contains("ERROR", ignoreCase = false) }.joinToString("\n")
+        text.lineSequence().filter { it.contains("ERROR") }.joinToString("\n")
 
-    /** One readable line for the "details" view, without the "ERROR: [youtube] id:" prefix. */
+    /** One readable line for the hidden details, without the "ERROR: [youtube] id:" prefix. */
     fun shortDetail(text: String): String {
         val line = text.lineSequence().map { it.trim() }.lastOrNull { it.startsWith("ERROR:") }
             ?: text.lineSequence().map { it.trim() }.lastOrNull { it.isNotEmpty() }
@@ -142,7 +143,7 @@ enum class Remedy {
     /** Ask YouTube with other player clients, over IPv4. */
     OTHER_CLIENTS,
 
-    /** Take whatever format exists. */
+    /** Take whatever audio exists. */
     ANY_FORMAT,
 
     /** Skip cover art and tags. */

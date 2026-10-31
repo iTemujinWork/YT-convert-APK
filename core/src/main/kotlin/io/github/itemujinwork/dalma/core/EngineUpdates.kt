@@ -1,4 +1,4 @@
-package io.github.itemujinwork.hanga.core
+package io.github.itemujinwork.dalma.core
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -27,8 +27,26 @@ object EngineVersion {
             .mapNotNull { part -> part.takeWhile { it.isDigit() }.toIntOrNull() }
 }
 
-/** A GitHub release, reduced to what the updater needs. */
-data class ReleaseInfo(val tag: String, val assets: Map<String, String>) {
+/** App versions are plain "1.2.3"; a "v" prefix and anything after a dash are ignored. */
+object AppVersion {
+    fun isNewer(candidate: String?, current: String?): Boolean {
+        val left = parts(candidate)
+        val right = parts(current)
+        if (left.isEmpty()) return false
+        for (i in 0 until maxOf(left.size, right.size)) {
+            val diff = left.getOrElse(i) { 0 }.compareTo(right.getOrElse(i) { 0 })
+            if (diff != 0) return diff > 0
+        }
+        return false
+    }
+
+    private fun parts(version: String?): List<Int> =
+        version.orEmpty().trim().removePrefix("v").substringBefore('-').split('.')
+            .mapNotNull { it.takeWhile { c -> c.isDigit() }.toIntOrNull() }
+}
+
+/** A GitHub release, reduced to what the updaters need. */
+data class ReleaseInfo(val tag: String, val assets: Map<String, String>, val htmlUrl: String? = null) {
     val version: String get() = tag.removePrefix("v")
 }
 
@@ -46,7 +64,8 @@ object Releases {
             if (!url.startsWith("https://")) return@mapNotNull null
             name to url
         }.toMap()
-        return ReleaseInfo(tag, assets)
+        val htmlUrl = (root["html_url"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.startsWith("https://") }
+        return ReleaseInfo(tag, assets, htmlUrl)
     }
 }
 

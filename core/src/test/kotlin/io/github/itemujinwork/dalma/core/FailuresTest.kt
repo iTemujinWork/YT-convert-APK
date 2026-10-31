@@ -1,4 +1,4 @@
-package io.github.itemujinwork.hanga.core
+package io.github.itemujinwork.dalma.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -12,6 +12,7 @@ class FailuresTest {
             "ERROR: [youtube] dQw4w9WgXcQ: Sign in to confirm you’re not a bot. Use --cookies-from-browser" to FailureKind.BOT_CHECK,
             "ERROR: [youtube] dQw4w9WgXcQ: Sign in to confirm your age. This video may be inappropriate for some users." to FailureKind.AGE_RESTRICTED,
             "ERROR: [youtube] dQw4w9WgXcQ: Private video. Sign in if you've been granted access to this video" to FailureKind.PRIVATE,
+            "ERROR: [youtube:tab] PLabc: The playlist does not exist." to FailureKind.PRIVATE,
             "ERROR: [youtube] dQw4w9WgXcQ: Join this channel to get access to members-only content like this video" to FailureKind.MEMBERS_ONLY,
             "ERROR: [youtube] dQw4w9WgXcQ: The uploader has not made this video available in your country" to FailureKind.REGION_BLOCKED,
             "ERROR: [youtube] dQw4w9WgXcQ: Video unavailable. This video contains content from SME, who has blocked it in your country on copyright grounds" to FailureKind.REGION_BLOCKED,
@@ -19,8 +20,8 @@ class FailuresTest {
             "ERROR: [youtube] dQw4w9WgXcQ: Video unavailable. This video has been removed by the uploader" to FailureKind.UNAVAILABLE,
             "ERROR: [youtube] dQw4w9WgXcQ: Video unavailable. This content isn't available, try again later." to FailureKind.THROTTLED,
             "ERROR: unable to download video data: HTTP Error 403: Forbidden" to FailureKind.FORBIDDEN,
-            "ERROR: unable to download video data: HTTP Error 429: Too Many Requests" to FailureKind.THROTTLED,
             "ERROR: unable to download video data: HTTP Error 404: Not Found" to FailureKind.FORBIDDEN,
+            "ERROR: unable to download video data: HTTP Error 429: Too Many Requests" to FailureKind.THROTTLED,
             "ERROR: unable to download video data: HTTP Error 503: Service Unavailable" to FailureKind.THROTTLED,
             "ERROR: [youtube] dQw4w9WgXcQ: Requested format is not available. Use --list-formats" to FailureKind.FORMAT_UNAVAILABLE,
             "ERROR: [youtube] dQw4w9WgXcQ: Unable to extract yt initial data; please report this issue on https://github.com/yt-dlp/yt-dlp/issues" to FailureKind.ENGINE_OUTDATED,

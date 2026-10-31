@@ -1,9 +1,10 @@
-package io.github.itemujinwork.hanga.core
+package io.github.itemujinwork.dalma.core
 
-/** Friendly, safe file names from YouTube titles. */
+/** Friendly, safe file names: "Előadó – Cím.opus". */
 object FileNames {
     private const val MAX_CHARS = 120
     private const val MAX_UTF8_BYTES = 200
+    private const val DASH = " – "
 
     private val BRACKETED = Regex("""\s*[(\[]([^()\[\]]{1,48})[)\]]""")
     private val WORD_SPLIT = Regex("""[\s/|&,+.-]+""")
@@ -16,14 +17,24 @@ object FileNames {
     )
 
     /**
-     * @param title the YouTube title, may be anything
+     * @param artist may be blank or `null`
+     * @param title the song or video title, may be anything
      * @param fallback used when nothing usable is left, e.g. the video id
+     * @param extension without the dot: opus, m4a...
      */
-    fun forMedia(title: String?, fallback: String, kind: MediaKind): String {
-        var name = title.orEmpty()
-        if (kind == MediaKind.AUDIO) name = stripNoise(name)
-        name = sanitize(name).ifEmpty { sanitize(fallback) }.ifEmpty { "hanga" }
-        return "$name.${kind.extension}"
+    fun forTrack(artist: String?, title: String?, fallback: String, extension: String): String {
+        val cleanTitle = sanitize(stripNoise(title.orEmpty()))
+        val cleanArtist = sanitize(artist.orEmpty())
+        var name = when {
+            cleanTitle.isEmpty() -> cleanArtist
+            cleanArtist.isEmpty() -> cleanTitle
+            // "Artist - Song" titles already carry the artist.
+            cleanTitle.startsWith(cleanArtist, ignoreCase = true) && cleanTitle.length > cleanArtist.length + 2 -> cleanTitle
+            else -> cleanArtist + DASH + cleanTitle
+        }
+        name = truncate(name).trimEnd { it == ' ' || it == '.' || it == '-' || it == '–' }
+        if (name.isEmpty()) name = sanitize(fallback).ifEmpty { "dalma" }
+        return "$name.$extension"
     }
 
     /** "Artist - Song (Official Music Video) [4K]" → "Artist - Song". */
@@ -48,12 +59,10 @@ object FileNames {
                 else -> builder.append(ch)
             }
         }
-        var name = builder.toString()
+        return builder.toString()
             .replace(Regex(" {2,}"), " ")
             .replace(Regex("-{2,}"), "-")
             .trim { it == ' ' || it == '.' || it == '-' || it == '_' }
-        name = truncate(name)
-        return name.trimEnd { it == ' ' || it == '.' || it == '-' }
     }
 
     private fun truncate(name: String): String {
