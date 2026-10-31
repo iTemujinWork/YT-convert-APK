@@ -58,12 +58,22 @@ def fit(image, size):
 
 
 def clip_mask(rgba):
-    """The largest mint-coloured blob is the hair clip."""
+    """
+    The hair clip: the largest mint-coloured blob around the head. The hoodie is mint too,
+    so only the upper part of the figure counts, and a blob the size of a sweater is skipped.
+    """
     rgb = rgba[..., :3].astype(np.float32)
     dist = np.sqrt(((rgb - MINT) ** 2).sum(axis=-1))
     mint = (dist < 46) & (rgba[..., 3] > 128)
-    # Connected components without scipy: a simple flood fill on a downscaled grid.
     h, w = mint.shape
+    visible = np.where(rgba[..., 3] > 128)
+    if len(visible[0]) == 0:
+        return None, None
+    top, bottom = int(visible[0].min()), int(visible[0].max())
+    head_limit = top + int((bottom - top) * 0.6)
+    mint[head_limit:, :] = False
+    figure_pixels = len(visible[0])
+    # Connected components without scipy: a simple flood fill.
     labels = np.zeros((h, w), dtype=np.int32)
     current = 0
     best = (0, None)
@@ -81,7 +91,7 @@ def clip_mask(rgba):
                         if 0 <= ny < h and 0 <= nx < w and mint[ny, nx] and labels[ny, nx] == 0:
                             labels[ny, nx] = current
                             stack.append((ny, nx))
-                if count > best[0]:
+                if best[0] < count <= figure_pixels * 0.06:
                     best = (count, current)
     if best[1] is None:
         return None, None

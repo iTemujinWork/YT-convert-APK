@@ -39,6 +39,7 @@ function variant(name, visible, size) {
     figcaption{font-size:14px;margin-top:4px}
     .light{background:#F4FBF8;color:#24564B}
     ${hero.css}${small.map((s) => s.css).join('\n')}
+    ${variant('light', moods.moods[names[0]], 160).css}${variant('tiny', moods.moods[names[0]], 64).css}
   </style></head><body>
     <div class="row">
       <figure>${hero.body}<figcaption>${names[0]} (480px)</figcaption></figure>
@@ -46,7 +47,6 @@ function variant(name, visible, size) {
       <figure>${variant('tiny', moods.moods[names[0]], 64).body}<figcaption>64px</figcaption></figure>
     </div>
     <div class="row" style="margin-top:16px">${small.map((s) => `<figure>${s.body}<figcaption>${s.name}</figcaption></figure>`).join('')}</div>
-    ${variant('light', moods.moods[names[0]], 160).css}${variant('tiny', moods.moods[names[0]], 64).css}
   </body></html>`;
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 1.5 });
