@@ -53,7 +53,8 @@ sealed interface EngineEvent {
 
 object EngineOutput {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-    private val ARCHIVE_LINE = Regex("""\[download]\s+(\S+?):\s+${Regex.escape(YtDlpArgs.ARCHIVE_SKIP)}""")
+    // "[download] dQw4w9WgXcQ: Song title has already been recorded in the archive"
+    private val ARCHIVE_LINE = Regex("""\[download]\s+([A-Za-z0-9_-]+):\s.*${Regex.escape(YtDlpArgs.ARCHIVE_SKIP)}""")
 
     fun parse(rawLine: String): EngineEvent? {
         val line = rawLine.trim()

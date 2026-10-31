@@ -250,6 +250,67 @@ class EngineIntegrationTest {
     }
 
     @Test
+    fun `a playlist walks every song, skips what we have, and reports the total`() {
+        assumeTrue("engine tests are opt-in", enabled)
+        val work = Files.createTempDirectory(root.toPath(), "playlist").toFile()
+        val ids = listOf("aaaaaaaaaa1", "bbbbbbbbbb2", "ccccccccccc")
+        val archive = File(work, "archive.txt").apply { writeText("youtube ${ids[1]}\n") }
+        val entries = buildJsonArray {
+            ids.forEachIndexed { index, id ->
+                add(
+                    buildJsonObject {
+                        put("id", id)
+                        put("title", "Dal ${index + 1}")
+                        put("uploader", "Lista Előadó")
+                        put("duration", 3)
+                        put("live_status", "not_live")
+                        put("webpage_url", "https://www.youtube.com/watch?v=$id")
+                        put("extractor", "youtube")
+                        put("extractor_key", "Youtube")
+                        put("_type", "video")
+                        put("formats", buildJsonArray { add(format("251", "audio_opus.webm", "webm", "opus", 160)) })
+                        put("thumbnails", buildJsonArray { add(buildJsonObject { put("id", "0"); put("url", url("thumb.webp")); put("preference", 0) }) })
+                    },
+                )
+            }
+        }
+        val playlist = buildJsonObject {
+            put("_type", "playlist")
+            put("id", "PLteszt")
+            put("title", "Teszt lista")
+            put("extractor", "youtube:tab")
+            put("extractor_key", "YoutubeTab")
+            put("webpage_url", "https://www.youtube.com/playlist?list=PLteszt")
+            put("entries", entries)
+        }
+        val info = File(work, "playlist.json").apply { writeText(playlist.toString()) }
+        // --no-clean-infojson keeps the "entries" of the loaded playlist (a test-only concern).
+        val args = YtDlpArgs.build(EngineRequest(Target.Playlist("PLteszt"), work.absolutePath, archive.absolutePath))
+            .dropLast(2) + listOf("--no-clean-infojson", "--load-info-json", info.absolutePath)
+        val process = ProcessBuilder(listOf(ytDlp) + args).redirectErrorStream(true).start()
+        val lines = process.inputStream.bufferedReader().readLines()
+        process.waitFor(180, TimeUnit.SECONDS)
+        assertEquals(lines.joinToString("\n"), 0, process.exitValue())
+        val events = lines.mapNotNull { EngineOutput.parse(it) }
+
+        val metas = events.filterIsInstance<EngineEvent.Meta>()
+        assertEquals(lines.joinToString("\n"), listOf(ids[0], ids[2]), metas.map { it.id })
+        assertEquals(listOf(1, 3), metas.map { it.playlistIndex })
+        assertEquals(listOf(3, 3), metas.map { it.playlistCount })
+        assertEquals("Lista Előadó", metas[0].artist)
+        assertEquals(listOf(ids[1]), events.filterIsInstance<EngineEvent.AlreadyHave>().map { it.id })
+        assertEquals(listOf(ids[0], ids[2]), events.filterIsInstance<EngineEvent.Output>().map { it.id })
+        assertTrue(events.filterIsInstance<EngineEvent.Output>().all { File(it.path).isFile && it.path.endsWith(".opus") })
+        assertEquals(EngineEvent.PlaylistDone(3), events.last { it is EngineEvent.PlaylistDone })
+
+        val tracker = ProgressTracker()
+        val seen = mutableListOf<Float>()
+        events.forEach { event -> tracker.onEvent(event)?.let(seen::add) }
+        assertEquals("the bar never goes back", seen, seen.sorted())
+        assertTrue(seen.toString(), seen.first() < 0.5f)
+    }
+
+    @Test
     fun `classifier understands a real engine error`() {
         assumeTrue("engine tests are opt-in", enabled)
         val result = run(formats = listOf(format("251", "missing.webm", "webm", "opus", 160)), extra = listOf("--retries", "0"))

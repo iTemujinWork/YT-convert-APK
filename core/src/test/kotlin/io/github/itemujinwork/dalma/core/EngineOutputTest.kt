@@ -44,6 +44,7 @@ class EngineOutputTest {
         assertEquals("dQw4w9WgXcQ", p.id)
         assertEquals(EngineEvent.Processing("dQw4w9WgXcQ"), EngineOutput.parse("[dalma-phase] dQw4w9WgXcQ"))
         assertEquals(EngineEvent.Output("dQw4w9WgXcQ", "/data/work/dQw4w9WgXcQ.opus"), EngineOutput.parse("[dalma-file] dQw4w9WgXcQ|/data/work/dQw4w9WgXcQ.opus\r"))
+        assertEquals(EngineEvent.AlreadyHave("dQw4w9WgXcQ"), EngineOutput.parse("[download] dQw4w9WgXcQ: Rick Astley - Never Gonna Give You Up has already been recorded in the archive"))
         assertEquals(EngineEvent.AlreadyHave("dQw4w9WgXcQ"), EngineOutput.parse("[download] dQw4w9WgXcQ: has already been recorded in the archive"))
         assertEquals(EngineEvent.PlaylistDone(12), EngineOutput.parse("[dalma-list] 12"))
         assertEquals(EngineEvent.PlaylistDone(null), EngineOutput.parse("[dalma-list] "))
