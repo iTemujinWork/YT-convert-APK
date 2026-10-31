@@ -182,13 +182,13 @@ def write_icon(layers):
     with open(os.path.join(DRAWABLE_DIR, "ic_launcher_foreground.xml"), "w") as f:
         f.write("\n".join(out))
 
-    # Themed icon: one colour, alpha only. Her silhouette with the clip cut out: every
-    # silhouette shape wound the same way, the clip wound the other way a few times over,
-    # all in ONE non-zero path, so the clip region sums to zero and becomes a hole.
+    # Themed icon: one colour, alpha only. Her silhouette with the clip cut out: a clip-path
+    # made of the whole box wound one way and the clip wound the other way, so (non-zero
+    # rule) the clip region has winding 0 and nothing is drawn there.
     clip = next(s for s in by_name["clip"] if s["id"] == "clip_shape")
-    silhouette = [oriented(s["d"], clockwise=True) for name in SILHOUETTE_LAYERS for s in by_name[name] if s["fill"]]
-    hole = oriented(clip["d"], clockwise=False)
-    combined = " ".join(silhouette + [hole] * len(silhouette))
+    box = "M 0,0 L 240,0 L 240,240 L 0,240 Z"
+    assert signed_area(box) > 0
+    cutout = box + " " + oriented(clip["d"], clockwise=False)
     scale = 0.40
     tx = 54 - 120 * scale
     ty = 54 - 104 * scale
@@ -202,11 +202,13 @@ def write_icon(layers):
         '    android:viewportHeight="108">',
         f'    <group android:scaleX="{num(scale)}" android:scaleY="{num(scale)}" '
         f'android:translateX="{num(tx)}" android:translateY="{num(ty)}">',
-        f'        <path android:pathData="{combined}" android:fillColor="#FF000000" android:fillType="nonZero" />',
-        "    </group>",
-        "</vector>",
-        "",
+        f'        <clip-path android:pathData="{cutout}" />',
     ]
+    for name in SILHOUETTE_LAYERS:
+        for s in by_name[name]:
+            if s["fill"]:
+                out.append(f'        <path android:pathData="{s["d"]}" android:fillColor="#FF000000" />')
+    out += ["    </group>", "</vector>", ""]
     with open(os.path.join(DRAWABLE_DIR, "ic_launcher_monochrome.xml"), "w") as f:
         f.write("\n".join(out))
 
@@ -239,12 +241,16 @@ def path_bounds(d):
     return p.bbox()
 
 
+def signed_area(d):
+    p = Path(d)
+    points = [p.point(i / 400.0) for i in range(401)]
+    return sum(points[i].x * points[i + 1].y - points[i + 1].x * points[i].y for i in range(400)) / 2.0
+
+
 def oriented(d, clockwise):
     """The path data wound clockwise (positive signed area in SVG's y-down space) or not."""
     p = Path(d)
-    points = [p.point(i / 400.0) for i in range(401)]
-    area = sum(points[i].x * points[i + 1].y - points[i + 1].x * points[i].y for i in range(400)) / 2.0
-    if (area > 0) != clockwise:
+    if (signed_area(d) > 0) != clockwise:
         p.reverse()
     out = p.d(relative=False)
     return re.sub(r"-?\d+\.?\d*(?:e-?\d+)?", lambda m: num(float(m.group(0))), out)
