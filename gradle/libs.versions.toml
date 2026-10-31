@@ -50,6 +50,8 @@ compose-animation = { module = "androidx.compose.animation:animation" }
 
 youtubedl-library = { module = "io.github.junkfood02.youtubedl-android:library", version.ref = "youtubedl" }
 youtubedl-ffmpeg = { module = "io.github.junkfood02.youtubedl-android:ffmpeg", version.ref = "youtubedl" }
+# The same version youtubedl-android's common module uses at runtime; it reads zip symlink entries.
+commons-compress = { module = "org.apache.commons:commons-compress", version = "1.12" }
 
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }

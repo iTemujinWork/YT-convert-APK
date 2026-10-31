@@ -3,6 +3,7 @@
 -dontwarn com.yausername.**
 -dontwarn com.fasterxml.jackson.**
 -dontwarn org.apache.commons.io.**
+-dontwarn org.apache.commons.compress.**
 
 # kotlinx.serialization
 -keepattributes *Annotation*, InnerClasses

@@ -12,14 +12,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.apache.commons.compress.archivers.zip.ZipFile as ArchiveFile
 import java.io.File
-import java.io.FileInputStream
-import java.io.FilterInputStream
 import java.io.IOException
-import java.io.InputStream
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipFile
-import java.util.zip.ZipInputStream
 import kotlin.concurrent.thread
 
 /**
@@ -95,22 +92,36 @@ class Engine(context: Context) {
         return "${zip.length()}:$updated"
     }
 
+    /**
+     * The zips carry Unix symlinks (libz.so.1 -> libz.so.1.3.1, libavcodec.so.61 -> ...), and
+     * ffmpeg and Python's C modules are linked against those names. java.util.zip cannot see
+     * them, so this goes through commons-compress and recreates every link as a real symlink.
+     */
     private fun unzip(zip: File, target: File, onBytes: (Long) -> Unit) {
         val targetPath = target.canonicalPath + File.separator
-        val counting = CountingInputStream(FileInputStream(zip))
-        ZipInputStream(counting.buffered()).use { input ->
-            while (true) {
-                val entry = input.nextEntry ?: break
+        var done = 0L
+        ArchiveFile(zip).use { archive ->
+            for (entry in archive.entries) {
                 val out = File(target, entry.name)
                 if (!out.canonicalPath.startsWith(targetPath)) throw IOException("bad zip entry ${entry.name}")
-                if (entry.isDirectory) {
-                    out.mkdirs()
-                } else {
-                    out.parentFile?.mkdirs()
-                    out.outputStream().use { input.copyTo(it) }
+                when {
+                    entry.isDirectory -> out.mkdirs()
+                    entry.isUnixSymlink -> {
+                        out.parentFile?.mkdirs()
+                        val link = archive.getInputStream(entry).use { it.bufferedReader().readText() }.trim()
+                        if (link.isEmpty() || link.startsWith("/") || link.split('/').contains("..")) {
+                            throw IOException("bad link ${entry.name} -> $link")
+                        }
+                        out.delete()
+                        Os.symlink(link, out.absolutePath)
+                    }
+                    else -> {
+                        out.parentFile?.mkdirs()
+                        archive.getInputStream(entry).use { input -> out.outputStream().use { input.copyTo(it) } }
+                    }
                 }
-                input.closeEntry()
-                onBytes(counting.count)
+                done += entry.compressedSize.coerceAtLeast(0L)
+                onBytes(done)
             }
         }
     }
@@ -273,15 +284,6 @@ class Engine(context: Context) {
             val partial = file.name.endsWith(".part") || file.name.endsWith(".ytdl")
             if (!(keepPartials && partial) && file.name != "archive.txt") file.delete()
         }
-    }
-
-    private class CountingInputStream(input: InputStream) : FilterInputStream(input) {
-        var count = 0L
-            private set
-
-        override fun read(): Int = super.read().also { if (it >= 0) count++ }
-
-        override fun read(b: ByteArray, off: Int, len: Int): Int = super.read(b, off, len).also { if (it > 0) count += it }
     }
 
     companion object {

@@ -73,6 +73,8 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             save(target)
         } finally {
             publisher.cancel()
+            // Once a day, quietly, after the song: a newer yt-dlp.
+            EngineUpdateWorker.enqueue(app)
         }
     }
 
@@ -106,10 +108,8 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
         engine.cleanWorkDir(keepPartials = true)
 
-        // 2. Once a day: a newer yt-dlp, quietly. Never fatal.
-        runCatching { updater.updateIfStale() }.onFailure { if (it.isCancellation()) throw it }
-
-        // 3. Attempts, each one a little different from the last.
+        // 2. Attempts, each one a little different from the last. (The daily yt-dlp update
+        //    runs after the save, off the song's critical path: see EngineUpdateWorker.)
         var strategy = Strategy.DEFAULT
         val applied = mutableSetOf<Remedy>()
         val timesApplied = mutableMapOf<Remedy, Int>()

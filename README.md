@@ -77,10 +77,10 @@ majd add meg a repó *Settings → Secrets and variables → Actions* oldalán:
 | `DALMA_KEYSTORE_PASSWORD` | a keystore jelszava |
 | `DALMA_KEY_ALIAS` | `dalma` |
 | `DALMA_KEY_PASSWORD` | a kulcs jelszava |
-| `DALMA_UPDATE_READ_TOKEN` | csak privát repónál: csak-olvasó token a frissítés-ellenőrzéshez |
+| `DALMA_UPDATE_READ_TOKEN` | csak privát repónál: finomhangolt token, csak erre a tárolóra, Contents: Read-only (az APK-ba kerül, bárki kiolvashatja; klasszikus `ghp_` token soha) |
 
-Titkok nélkül a CI debug-kulccsal ír alá; ilyen APK-ról később a saját kulcsos verzióra csak
-törlés után lehet váltani.
+Titkok nélkül a CI és a helyi build a tárolóban lévő, nyilvános előnézeti kulccsal (`app/preview.keystore`)
+ír alá, így az előnézetek frissítik egymást; a saját kulcsos verzióra csak törlés után lehet váltani.
 
 ## Licencek
 

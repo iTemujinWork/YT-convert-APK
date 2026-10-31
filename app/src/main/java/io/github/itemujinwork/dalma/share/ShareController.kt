@@ -24,6 +24,9 @@ sealed interface ShareStatus {
     data object WaitingForNetwork : ShareStatus
 
     data class Finished(val outcome: Outcome) : ShareStatus
+
+    /** The user tapped Megszakítás in the notification: nothing to apologise for. */
+    data object Cancelled : ShareStatus
 }
 
 class ShareController(private val context: Context) {
@@ -52,7 +55,7 @@ class ShareController(private val context: Context) {
             }
             WorkInfo.State.SUCCEEDED, WorkInfo.State.FAILED ->
                 ShareStatus.Finished(Protocol.outcome(info.outputData) ?: Outcome.Failed(FailureKind.UNKNOWN, null))
-            WorkInfo.State.CANCELLED -> ShareStatus.Finished(Outcome.Failed(FailureKind.UNKNOWN, "cancelled"))
+            WorkInfo.State.CANCELLED -> ShareStatus.Cancelled
         }
     }
 }

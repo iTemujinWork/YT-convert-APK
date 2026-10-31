@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -48,6 +48,8 @@ jobs:
     name: App (tests, lint, screenshots, APK)
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
     outputs:
       version: ${{ steps.version.outputs.name }}
     steps:
@@ -60,14 +62,17 @@ jobs:
 
       - name: Version
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # One monotonic versionCode for tags and previews alike: minutes since the epoch.
+          code=$(( $(date -u +%s) / 60 ))
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             name="${GITHUB_REF#refs/tags/v}"
-            IFS=. read -r major minor patch <<< "${name%%-*}"
-            code=$(( major * 10000 + minor * 100 + ${patch:-0} ))
           else
-            name="0.0.0-preview+${GITHUB_SHA::7}"
-            code="$GITHUB_RUN_NUMBER"
+            base=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
+            base="${base#v}"; base="${base:-0.0.0}"
+            name="${base}-preview.${GITHUB_RUN_NUMBER}+${GITHUB_SHA::7}"
           fi
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "code=$code" >> "$GITHUB_OUTPUT"
@@ -88,7 +93,7 @@ jobs:
             echo "DALMA_KEYSTORE_FILE=$RUNNER_TEMP/dalma.jks" >> "$GITHUB_ENV"
             echo "signed=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No DALMA_KEYSTORE_BASE64 secret: the APK will be signed with a debug key."
+            echo "No DALMA_KEYSTORE_BASE64 secret: the APK will be signed with the preview key (app/preview.keystore)."
             echo "signed=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -155,8 +160,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete preview --yes --cleanup-tag 2>/dev/null || true
-          gh release create preview out/*.apk --prerelease --title "Dalma előnézet (${GITHUB_SHA::7})" \
-            --notes "Automatikus előnézet a(z) ${GITHUB_REF_NAME} ágról. Aláírás: ${{ steps.signing.outputs.signed == 'true' && 'saját kulcs' || 'debug kulcs (telepítés előtt töröld a korábbi, másképp aláírt Dalmát)' }}."
+          gh release create preview out/*.apk --target "$GITHUB_SHA" --prerelease --title "Dalma előnézet (${GITHUB_SHA::7})" \
+            --notes "Automatikus előnézet a(z) ${GITHUB_REF_NAME} ágról. Aláírás: ${{ steps.signing.outputs.signed == 'true' && 'saját kulcs' || 'előnézeti kulcs (a saját kulcsos Dalmára váltás előtt töröld az előnézetet)' }}."
 
       - name: Release (tags)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -197,7 +202,15 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.itemujinwork.dalma.OnlineSmokeTest
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: emulator-reports-offline
+          path: |
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results
       - name: A real YouTube link (best effort, YouTube may block the runner)
+        id: online
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
@@ -209,7 +222,9 @@ jobs:
           disable-animations: true
           script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.itemujinwork.dalma.OnlineSmokeTest
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
+        if: always() && steps.online.outcome != 'skipped'
         with:
-          name: emulator-reports
-          path: app/build/reports/androidTests
+          name: emulator-reports-online
+          path: |
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results

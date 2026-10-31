@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
 plugins {
@@ -21,6 +22,13 @@ val signing = Properties().apply {
 fun signingValue(key: String, env: String): String? = signing.getProperty(key) ?: System.getenv(env)?.takeIf { it.isNotBlank() }
 val releaseStore = signingValue("storeFile", "DALMA_KEYSTORE_FILE")?.let { rootProject.file(it) }?.takeIf { it.isFile }
 
+// The read-only token for the update check is compiled into the APK, where anyone can read it:
+// only a fine-grained token limited to this repository (Contents: Read-only) may go there.
+val updateToken = System.getenv("DALMA_UPDATE_READ_TOKEN").orEmpty()
+require(updateToken.isEmpty() || updateToken.startsWith("github_pat_")) {
+    "DALMA_UPDATE_READ_TOKEN ships inside the APK: use a fine-grained token (github_pat_...) limited to this repository with Contents: Read-only, never a classic ghp_ token."
+}
+
 android {
     namespace = "io.github.itemujinwork.dalma"
     compileSdk = 36
@@ -34,10 +42,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += dalmaAbis }
         buildConfigField("String", "UPDATE_REPO", "\"iTemujinWork/YT-convert-APK\"")
-        buildConfigField("String", "UPDATE_TOKEN", "\"${System.getenv("DALMA_UPDATE_READ_TOKEN").orEmpty()}\"")
+        buildConfigField("String", "UPDATE_TOKEN", "\"$updateToken\"")
     }
 
     signingConfigs {
+        // A public throwaway key for previews and local builds, so one preview can update the
+        // previous one. Anyone can build an APK that installs over a preview; the owner's real
+        // key (keystore.properties / CI secrets) is used whenever it exists.
+        create("preview") {
+            storeFile = file("preview.keystore")
+            storePassword = "preview"
+            keyAlias = "preview"
+            keyPassword = "preview"
+        }
         if (releaseStore != null) {
             create("release") {
                 storeFile = releaseStore
@@ -53,7 +70,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("preview")
         }
         debug {
             isMinifyEnabled = false
@@ -95,7 +112,10 @@ android {
 }
 
 kotlin {
-    jvmToolchain(17)
+    // Like core/: any JDK >= 17 that runs Gradle can build this; no toolchain download needed.
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 roborazzi {
@@ -123,17 +143,22 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
-    // The download engine: Python + yt-dlp + QuickJS, and FFmpeg, as native libraries.
+    // The download engine: Python + yt-dlp + QuickJS, and FFmpeg, as native libraries. Only the
+    // binaries are used; the library's own classes and their dependencies are left out.
     implementation(libs.youtubedl.library) {
         exclude(group = "com.fasterxml.jackson.core")
         exclude(group = "commons-io")
+        exclude(group = "org.apache.commons")
         exclude(group = "androidx.appcompat")
     }
     implementation(libs.youtubedl.ffmpeg) {
         exclude(group = "com.fasterxml.jackson.core")
         exclude(group = "commons-io")
+        exclude(group = "org.apache.commons")
         exclude(group = "androidx.appcompat")
     }
+    // Reads the Unix symlinks inside the engine zips (java.util.zip cannot).
+    implementation(libs.commons.compress)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

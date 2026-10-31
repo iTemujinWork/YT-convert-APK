@@ -50,11 +50,6 @@ internal object MascotAssets {
         }
     }
 
-    /** Call early (e.g. from Application.onCreate on a worker thread) so the first sheet is instant. */
-    fun warmUp(context: Context) {
-        Thread({ load(context) }, "dalma-assets").start()
-    }
-
     private fun read(context: Context, folder: String): MascotImages? {
         val assets = context.assets
         val manifestText = try {

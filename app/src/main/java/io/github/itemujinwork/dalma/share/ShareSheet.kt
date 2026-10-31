@@ -83,11 +83,11 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
     var glow by remember { mutableFloatStateOf(0f) }
     var progressDescription by remember { mutableStateOf<Int?>(null) }
 
-    // Android 13+: the system asks once, with its own words, at the first share.
-    var permissionSettled by remember { mutableStateOf(!shouldAskForNotifications(context)) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionSettled = true }
+    // Android 13+: the system asks once, with its own words, at the first share. The work does
+    // not wait for the answer: a noHistory activity may be finished under an opaque dialog.
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     LaunchedEffect(Unit) {
-        if (!permissionSettled) {
+        if (shouldAskForNotifications(context)) {
             Prefs(context).notificationAsked = true
             permission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -101,8 +101,7 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         }
     }
 
-    LaunchedEffect(permissionSettled) {
-        if (!permissionSettled) return@LaunchedEffect
+    LaunchedEffect(Unit) {
         mascot.arrive()
         val target = (check as? LinkCheck.Found)?.target
         if (target == null) {
@@ -134,7 +133,17 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
                     }
                 }
             }
-            .first { it is ShareStatus.Finished || it is ShareStatus.WaitingForNetwork }
+            .first { it is ShareStatus.Finished || it is ShareStatus.WaitingForNetwork || it is ShareStatus.Cancelled }
+
+        if (finalStatus is ShareStatus.Cancelled) {
+            // The user asked to stop: no sentence, no apology, just away.
+            progressDescription = null
+            mascot.clipFill = null
+            glow = 0f
+            mascot.turnBack()
+            dismissAfter(300)
+            return@LaunchedEffect
+        }
 
         val elapsed = SystemClock.elapsedRealtime() - startedAt
         if (!reducedMotion) delay((MIN_CHOREOGRAPHY_MILLIS - elapsed).coerceAtLeast(0L))

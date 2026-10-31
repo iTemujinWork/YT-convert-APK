@@ -37,7 +37,7 @@ import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 
-/** Late in the evening Dalma is sleepy; this follows the clock, not dark mode. */
+/** Late in the evening Dalma still says hello, then gets sleepy; this follows the clock, not dark mode. */
 fun isLateEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 22 || now.hour < 6
 
 @Composable
@@ -52,12 +52,11 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
     LaunchedEffect(checkForUpdates) { if (checkForUpdates) update = AppUpdateCheck.check(context) }
     LaunchedEffect(sleepy) {
         mascot.arrive()
-        if (sleepy) {
-            mascot.sleepy()
-        } else {
+        if (!mascot.reducedMotion) {
             delay(120)
-            mascot.greet()
+            mascot.greet() // the wink needs open eyes, so it comes before the sleepy face
         }
+        if (sleepy) mascot.sleepy()
         mascot.live(sleepy)
     }
 

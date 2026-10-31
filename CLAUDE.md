@@ -12,7 +12,9 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 - **Csak zene**: a YouTube 251-es Opus-folyama átkódolás nélkül, `.opus`; ha nincs, AAC 140 `.m4a`.
   Tagek (előadó, cím, album, év) és négyzetes borító a fájlba írva. Formátumváltás tilos.
 - **Mentés a Zene mappába** MediaStore-on át, `Előadó – Cím.opus`, soha nem ír felül semmit.
-- **Engedélyek**: csak internet és értesítés. (ACCESS_NETWORK_STATE-et a WorkManager amúgy is behozza.)
+- **Engedélyek**: csak internet és értesítés. (ACCESS_NETWORK_STATE-et a WorkManager amúgy is behozza; a
+  FOREGROUND_SERVICE és FOREGROUND_SERVICE_DATA_SYNC telepítéskor járó, soha nem kérdezett engedély, az
+  Android 14 kéri a letöltés előtérszolgáltatásához.)
 - **Mindig sötét**, menta `#8FD3BE` és tejfehér `#F4FBF8` a mély éjszakai zöldön `#0E1B19`.
   Fraunces a mondathoz, Nunito minden máshoz. Csillagos ég: nincs csillagkép, vonal vagy hold.
 - **Dalma**: lágy, vonalas, pasztell, mindig mosolygós, kedves és ártatlan. Lejátszás-jel alakú hajcsat,
@@ -47,7 +49,10 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 ## Kiadás
 
 1. Titkok a GitHubon: `DALMA_KEYSTORE_BASE64`, `DALMA_KEYSTORE_PASSWORD`, `DALMA_KEY_ALIAS`,
-   `DALMA_KEY_PASSWORD` (opcionális: `DALMA_UPDATE_READ_TOKEN` privát repóhoz). Nélkülük a CI
-   debug-kulccsal ír alá, és ezt az előnézeti kiadás szövege jelzi.
+   `DALMA_KEY_PASSWORD`. Nélkülük a CI és a helyi build a tárolóban lévő, nyilvános előnézeti kulccsal
+   (`app/preview.keystore`) ír alá, és ezt az előnézeti kiadás szövege jelzi. Opcionális
+   `DALMA_UPDATE_READ_TOKEN` csak privát repónál: finomhangolt (fine-grained) token, csak erre az egy
+   tárolóra, egyetlen joggal (Contents: Read-only), legfeljebb 1 évre; az APK-ba kerül, bárki
+   kiolvashatja, ezért klasszikus `ghp_` token soha.
 2. `git tag v1.0.0 && git push origin v1.0.0` → a CI elkészíti és feltölti a `Dalma-1.0.0.apk`-t.
 3. Az app naponta egyszer megnézi a legújabb kiadást, és egy sorral szól: „Van újabb Dalma.”

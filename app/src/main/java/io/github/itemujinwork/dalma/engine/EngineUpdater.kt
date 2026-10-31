@@ -23,10 +23,11 @@ class EngineUpdater(private val engine: Engine, private val prefs: Prefs) {
     suspend fun updateIfStale(force: Boolean = false): Result = withContext(Dispatchers.IO) {
         val now = System.currentTimeMillis()
         if (!force && now - prefs.lastEngineCheck < DAY_MILLIS) return@withContext Result.UpToDate
+        // Stamped first: a failed check is retried tomorrow, not on every share.
+        prefs.lastEngineCheck = now
         try {
             val release = Releases.parseLatest(Http.getText(LATEST_URL, headers = API_HEADERS))
                 ?: return@withContext Result.Failed("cannot read the release list")
-            prefs.lastEngineCheck = now
             if (!engine.isNewerThanInstalled(release.version)) return@withContext Result.UpToDate
             val binaryUrl = release.assets[BINARY] ?: return@withContext Result.Failed("no $BINARY in release ${release.tag}")
             val sumsUrl = release.assets[SUMS] ?: return@withContext Result.Failed("no $SUMS in release ${release.tag}")

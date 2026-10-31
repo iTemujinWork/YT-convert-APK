@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Only what the spec allows: the internet and the notification. -->
+    <!-- What the spec allows: the internet and the notification. FOREGROUND_SERVICE and
+         FOREGROUND_SERVICE_DATA_SYNC are install-time normal permissions (never asked, not listed
+         to the user) that Android 9+/14+ require for the background download's dataSync foreground
+         service, which the spec itself asks for. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
