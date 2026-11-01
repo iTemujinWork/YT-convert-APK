@@ -11,10 +11,16 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
   Szöveg csak a legvégén, egyetlen rövid, tegeződő mondat (`app/src/main/res/values/strings.xml`).
 - **Csak zene**: a YouTube 251-es Opus-folyama átkódolás nélkül, `.opus`; ha nincs, AAC 140 `.m4a`.
   Tagek (előadó, cím, album, év) és négyzetes borító a fájlba írva. Formátumváltás tilos.
-- **Mentés a Zene mappába** MediaStore-on át, `Előadó – Cím.opus`, soha nem ír felül semmit.
+- **Mentés a `Zene/Dalma` mappába** MediaStore-on át (`RELATIVE_PATH = Music/Dalma/`), `Előadó – Cím.opus`,
+  soha nem ír felül semmit. Ez Dalma saját könyvtára: látható a Fájlkezelőben, más lejátszó is
+  lejátszhatja, nincs titkosítva, nincs elrejtve, és túléli az app törlését. (Döntés: 2026-11-01; az
+  első kiadások a `Zene` gyökerébe mentettek.)
+- **Tiszta lap**: Dalma csak a `Zene/Dalma` mappát nézi és listázza; más zenéhez soha nem nyúl.
 - **Engedélyek**: csak internet és értesítés. (ACCESS_NETWORK_STATE-et a WorkManager amúgy is behozza; a
   FOREGROUND_SERVICE és FOREGROUND_SERVICE_DATA_SYNC telepítéskor járó, soha nem kérdezett engedély, az
-  Android 14 kéri a letöltés előtérszolgáltatásához.)
+  Android 14 kéri a letöltés előtérszolgáltatásához.) Egyetlen kivétel: újratelepítés után, ha már van
+  `Zene/Dalma` mappa, a régi dalok olvasásához a rendszer egyszer megkérdezi a zene-hozzáférést
+  (READ_MEDIA_AUDIO); első telepítésnél soha. Az engedély után is csak a saját mappa.
 - **Mindig sötét**, menta `#8FD3BE` és tejfehér `#F4FBF8` a mély éjszakai zöldön `#0E1B19`.
   Fraunces a mondathoz, Nunito minden máshoz. Csillagos ég: nincs csillagkép, vonal vagy hold.
 - **Dalma**: lágy, vonalas, pasztell, mindig mosolygós, kedves és ártatlan. Lejátszás-jel alakú hajcsat,
@@ -23,6 +29,18 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 - **A kliens maradjon kliens**: nem lát naplót, hibarészletet, nem kezel semmit. A diagnosztika
   (`Diagnostics` fájl, logcat) csak a fejlesztőé; a névjegyen hibasor és naplómegosztás nem lehet.
 - Terjesztés APK-val a GitHub Releases oldalról; aláírókulcs a tulajdonosnál (CI titkok).
+
+## Lejátszó (döntés 2026-11-01, tervezés alatt)
+
+Dalma ikonjára koppintva nem csak áll: a saját `Zene/Dalma` gyűjteményét játssza le, ugyanazzal az
+elvvel (minimális, sötét, kabala, egy mondat, semmi reklám és zsúfoltság). A Megosztás-lap és a letöltés
+változatlan. Javasolt irány, a felhasználóval ötletelve: borítórács a csillagos ég alatt, legfrissebb
+elöl; koppintás a borítóra = szól; a hajcsat a lejátszógomb (koppintás indít/megállít, a dallal telik,
+húzva teker); Dalmán simítás = következő/előző; Dalma fülhallgatóval, csukott szemmel ringatózik a hang
+erejére (mikrofon nélkül, a lejátszóból); „Előadó – Cím” Fraunces betűvel, mint Dalma mondata; hosszan
+nyomott borító elúszik, pár másodpercig visszahozható („Elengedtem.”); háttérben is szól rendszer-
+értesítéssel (Media3, FOREGROUND_SERVICE_MEDIA_PLAYBACK telepítéskor járó engedély). Se kereső, se
+rendezés, se beállítás.
 
 ## Szerkezet
 
