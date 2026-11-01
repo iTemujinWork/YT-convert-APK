@@ -22,9 +22,13 @@ object DalmaColors {
     val Mint = Color(0xFF8FD3BE)
     val Milk = Color(0xFFF4FBF8)
     val MilkDim = Color(0xB3F4FBF8)
+
+    // The player's two greys from the 0.2.0 sheet: artist and secondary text, then time and list artist.
+    val Pale = Color(0xFFB9CFC8)
+    val Dim = Color(0xFF9FB8B0)
 }
 
-/** Fraunces for the one sentence, Nunito for everything else. Both are variable fonts. */
+/** Fraunces for the one sentence (600) and the player's titles (500), Nunito for everything else. Both are variable fonts. */
 @OptIn(ExperimentalTextApi::class)
 val Fraunces: FontFamily = FontFamily(
     Font(
@@ -33,6 +37,16 @@ val Fraunces: FontFamily = FontFamily(
         variationSettings = FontVariation.Settings(
             FontVariation.weight(600),
             FontVariation.Setting("opsz", 36f),
+            FontVariation.Setting("SOFT", 40f),
+            FontVariation.Setting("WONK", 0f),
+        ),
+    ),
+    Font(
+        R.font.fraunces,
+        weight = FontWeight.Medium,
+        variationSettings = FontVariation.Settings(
+            FontVariation.weight(500),
+            FontVariation.Setting("opsz", 24f),
             FontVariation.Setting("SOFT", 40f),
             FontVariation.Setting("WONK", 0f),
         ),

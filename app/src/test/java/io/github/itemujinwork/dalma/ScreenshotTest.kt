@@ -19,6 +19,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.itemujinwork.dalma.home.HomeScreen
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.net.toUri
+import io.github.itemujinwork.dalma.data.Song
+import io.github.itemujinwork.dalma.play.PlayerScreen
 import io.github.itemujinwork.dalma.share.ShareSheetContent
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.SkyState
@@ -90,6 +98,43 @@ class ScreenshotTest {
 
     @Test
     fun home_sleepy() = shot("home_sleepy") { HomeScreen(sleepy = true, checkForUpdates = false) }
+
+    // --- The player ("Most szól"), with the sheet's sample song ---
+
+    /** A cover like the mock-up's: a warm sky, a sun, a dark ground. */
+    private fun fakeCover(): ImageBitmap = Bitmap.createBitmap(660, 660, Bitmap.Config.ARGB_8888).also { bitmap ->
+        val canvas = Canvas(bitmap)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        canvas.drawColor(0xFFC66E2C.toInt())
+        paint.color = 0xFF5A2E12.toInt()
+        canvas.drawRect(0f, 400f, 660f, 660f, paint)
+        paint.color = 0xFFFFD166.toInt()
+        canvas.drawCircle(330f, 330f, 120f, paint)
+    }.asImageBitmap()
+
+    private fun player(name: String, cover: ImageBitmap?, artist: String? = "Kóbor Lámpás", playing: Boolean = true) = shot(name) {
+        PlayerScreen(
+            song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "Hajnali vonat.opus", title = "Hajnali vonat", artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
+            cover = cover,
+            playing = playing,
+            positionMillis = 108_000,
+            durationMillis = 235_000,
+            mascot = mascot(),
+            sky = SkyState(),
+            onTap = {},
+            onSwipe = {},
+            onSwipeUp = {},
+            onLongPress = {},
+            onSeek = {},
+            onMascotLongPress = {},
+        )
+    }
+
+    @Test
+    fun player_playing() = player("player_playing", cover = fakeCover())
+
+    @Test
+    fun player_no_cover() = player("player_no_cover", cover = null, artist = null, playing = false)
 
     @Test
     fun sheet_arriving() = sheet("sheet_arriving", mascot())

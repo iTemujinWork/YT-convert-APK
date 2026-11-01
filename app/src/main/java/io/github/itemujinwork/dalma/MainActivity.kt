@@ -9,13 +9,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import io.github.itemujinwork.dalma.home.HomeScreen
+import io.github.itemujinwork.dalma.home.DalmaRoot
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.animationsDisabled
 import io.github.itemujinwork.dalma.ui.theme.DalmaTheme
 import io.github.itemujinwork.dalma.work.EngineUpdateWorker
 
-/** Opening the app: Dalma greets and is there, as if alive. Nothing to press. */
+/** Opening the app: Dalma greets and is there, as if alive; with songs in her folder, the player. Nothing to press. */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DalmaTheme {
                 CompositionLocalProvider(LocalReducedMotion provides remember { animationsDisabled() }) {
-                    HomeScreen()
+                    DalmaRoot()
                 }
             }
         }

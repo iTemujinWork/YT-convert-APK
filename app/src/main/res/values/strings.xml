@@ -40,6 +40,8 @@
     <string name="about_engine_unknown">Letöltőmotor: yt-dlp</string>
     <string name="about_update">Van újabb Dalma.</string>
     <string name="about_how">YouTube-ban: Megosztás → Dalma.</string>
+    <!-- The player, under a title whose file carries no artist. -->
+    <string name="unknown_artist">Ismeretlen előadó</string>
     <string name="about_licenses">Licencek</string>
     <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
     <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>
