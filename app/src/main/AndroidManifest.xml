@@ -56,11 +56,13 @@
         </activity>
 
         <!-- The player: alive in the background with the system's media notification, and
-             reachable from the lock screen, headset buttons and Bluetooth (Media3 session). -->
+             reachable from the lock screen, headset buttons and Bluetooth (Media3 session).
+             Exported on purpose, as Media3 asks: the session itself decides who may control it. -->
         <service
             android:name=".play.PlaybackService"
             android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
             <intent-filter>
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
