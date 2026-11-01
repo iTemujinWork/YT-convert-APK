@@ -25,6 +25,7 @@ import android.graphics.Paint
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.net.toUri
+import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.play.PlayerScreen
 import io.github.itemujinwork.dalma.share.ShareSheetContent
@@ -101,21 +102,28 @@ class ScreenshotTest {
 
     // --- The player ("Most szól"), with the sheet's sample song ---
 
-    /** A cover like the mock-up's: a warm sky, a sun, a dark ground. */
-    private fun fakeCover(): ImageBitmap = Bitmap.createBitmap(660, 660, Bitmap.Config.ARGB_8888).also { bitmap ->
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        canvas.drawColor(0xFFC66E2C.toInt())
-        paint.color = 0xFF5A2E12.toInt()
-        canvas.drawRect(0f, 400f, 660f, 660f, paint)
-        paint.color = 0xFFFFD166.toInt()
-        canvas.drawCircle(330f, 330f, 120f, paint)
-    }.asImageBitmap()
+    /** A cover like the mock-up's: a sky, a sun, a dark ground. */
+    private fun fakeCover(skyColor: Int = 0xFFC66E2C.toInt(), ground: Int = 0xFF5A2E12.toInt(), sun: Int = 0xFFFFD166.toInt()): ImageBitmap =
+        Bitmap.createBitmap(660, 660, Bitmap.Config.ARGB_8888).also { bitmap ->
+            val canvas = Canvas(bitmap)
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+            canvas.drawColor(skyColor)
+            paint.color = ground
+            canvas.drawRect(0f, 400f, 660f, 660f, paint)
+            paint.color = sun
+            canvas.drawCircle(330f, 330f, 120f, paint)
+        }.asImageBitmap()
 
-    private fun player(name: String, cover: ImageBitmap?, artist: String? = "Kóbor Lámpás", playing: Boolean = true) = shot(name) {
+    /** The sheet's sample colours: the sunrise cover (nappal) and the violet one (este). */
+    private val sunrise = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF9D085.toInt())
+    private val violet = SongPalette(dominant = 0xFF543476.toInt(), vivid = 0xFFD9A3F0.toInt())
+
+    private fun player(name: String, cover: ImageBitmap?, artist: String? = "Kóbor Lámpás", playing: Boolean = true, palette: SongPalette = sunrise, evening: Boolean = false, title: String = "Hajnali vonat") = shot(name) {
         PlayerScreen(
-            song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "Hajnali vonat.opus", title = "Hajnali vonat", artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
+            song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "$title.opus", title = title, artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
             cover = cover,
+            palette = palette,
+            evening = evening,
             playing = playing,
             positionMillis = 108_000,
             durationMillis = 235_000,
@@ -134,7 +142,10 @@ class ScreenshotTest {
     fun player_playing() = player("player_playing", cover = fakeCover())
 
     @Test
-    fun player_no_cover() = player("player_no_cover", cover = null, artist = null, playing = false)
+    fun player_no_cover() = player("player_no_cover", cover = null, artist = null, playing = false, palette = SongPalette.fromArtist(null), title = "Esti villamos")
+
+    @Test
+    fun player_evening() = player("player_evening", cover = fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()), artist = "Ibolya", palette = violet, evening = true, title = "Negyedik emelet")
 
     @Test
     fun sheet_arriving() = sheet("sheet_arriving", mascot())

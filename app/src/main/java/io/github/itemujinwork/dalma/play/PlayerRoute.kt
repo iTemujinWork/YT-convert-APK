@@ -17,6 +17,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.home.AboutCard
@@ -26,6 +27,13 @@ import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.time.LocalTime
+
+/** The player's evening, 20:00–06:00: less colour in the sky (Dalma's night mood comes in step 9). */
+fun isPlayerEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 20 || now.hour < 6
+
+/** The cover and the colours of one song, loaded together so they arrive together. */
+private class Art(val songId: Long, val cover: ImageBitmap?, val palette: SongPalette)
 
 /**
  * The player screen tied to the folder and the service. Before anything plays, the newest
@@ -51,9 +59,16 @@ fun PlayerRoute(songs: List<Song>) {
             position = playback?.positionMillis ?: 0L
         }
     }
-    val cover by produceState<ImageBitmap?>(initialValue = null, song.id) {
-        value = withContext(Dispatchers.IO) { folder.cover(song, COVER_PX)?.asImageBitmap() }
+
+    // The previous song's cover and colours stay until the new ones are read, so the colours cross-fade.
+    var art by remember { mutableStateOf<Art?>(null) }
+    LaunchedEffect(song.id) {
+        art = withContext(Dispatchers.IO) {
+            val bitmap = folder.cover(song, COVER_PX)
+            Art(song.id, bitmap?.asImageBitmap(), SongColors.of(bitmap, song.artist))
+        }
     }
+    val shownArt = art?.takeIf { it.songId == song.id }
 
     val mascot = rememberMascotState()
     val sky = rememberSkyState()
@@ -61,6 +76,7 @@ fun PlayerRoute(songs: List<Song>) {
         mascot.closeness.snapTo(1f)
         mascot.live(sleepy = false)
     }
+    val evening = remember { isPlayerEvening() }
     val haptic = LocalHapticFeedback.current
     var showAbout by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<AppUpdateCheck.Available?>(null) }
@@ -68,12 +84,14 @@ fun PlayerRoute(songs: List<Song>) {
 
     PlayerScreen(
         song = song,
-        cover = cover,
+        cover = shownArt?.cover ?: art?.cover,
+        palette = (shownArt ?: art)?.palette ?: SongPalette.fromArtist(song.artist),
         playing = state.playing,
         positionMillis = position,
         durationMillis = state.durationMillis.takeIf { queued && it > 0 } ?: song.durationMillis,
         mascot = mascot,
         sky = sky,
+        evening = evening,
         onTap = {
             val player = playback ?: return@PlayerScreen
             if (queued) player.playPause() else player.play(songs, songs.indexOf(song))

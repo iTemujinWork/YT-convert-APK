@@ -13,6 +13,8 @@ splashscreen = "1.0.1"
 profileinstaller = "1.4.1"
 # Latest stable on developer.android.com/jetpack/androidx/releases/media3 (1.11.1, 2026-09-10).
 media3 = "1.11.1"
+# Latest stable on developer.android.com/jetpack/androidx/releases/palette (1.1.0, 2026-10-21).
+palette = "1.1.0"
 
 youtubedl = "0.18.1"
 
@@ -41,6 +43,8 @@ androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstall
 # The player: ExoPlayer for Opus/AAC, the session for lock screen, headset, Bluetooth and the notification.
 androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
+# The two colours of a cover (the song's background and line).
+androidx-palette = { module = "androidx.palette:palette", version.ref = "palette" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
