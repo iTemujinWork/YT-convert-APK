@@ -11,6 +11,8 @@ lifecycle = "2.9.1"
 work = "2.10.2"
 splashscreen = "1.0.1"
 profileinstaller = "1.4.1"
+# Latest stable on developer.android.com/jetpack/androidx/releases/media3 (1.11.1, 2026-09-10).
+media3 = "1.11.1"
 
 youtubedl = "0.18.1"
 
@@ -36,6 +38,9 @@ androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "work" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
+# The player: ExoPlayer for Opus/AAC, the session for lock screen, headset, Bluetooth and the notification.
+androidx-media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+androidx-media3-session = { module = "androidx.media3:media3-session", version.ref = "media3" }
 
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }

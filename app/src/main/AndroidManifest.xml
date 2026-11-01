@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- The same kind of install-time permission for the player's mediaPlayback service (Android 14+). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Invisible to the user; WorkManager merges it in anyway. Lets Dalma say "Nincs net" at once. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -52,6 +54,17 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- The player: alive in the background with the system's media notification, and
+             reachable from the lock screen, headset buttons and Bluetooth (Media3 session). -->
+        <service
+            android:name=".play.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <!-- WorkManager runs the download as a foreground service; Android 14 wants its type. -->
         <service

@@ -18,8 +18,8 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
   (`data/MusicFolder`), adatbázis nélkül.
 - **Tiszta lap**: Dalma csak a `Zene/Dalma` mappát nézi és listázza; más zenéhez soha nem nyúl.
 - **Engedélyek**: csak internet és értesítés. (ACCESS_NETWORK_STATE-et a WorkManager amúgy is behozza; a
-  FOREGROUND_SERVICE és FOREGROUND_SERVICE_DATA_SYNC telepítéskor járó, soha nem kérdezett engedély, az
-  Android 14 kéri a letöltés előtérszolgáltatásához.) Egyetlen kivétel: újratelepítés után, ha már van
+  FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC és FOREGROUND_SERVICE_MEDIA_PLAYBACK telepítéskor járó,
+  soha nem kérdezett engedély, az Android 14 kéri a letöltés és a lejátszás előtérszolgáltatásához.) Egyetlen kivétel: újratelepítés után, ha már van
   `Zene/Dalma` mappa, a régi dalok olvasásához a rendszer egyszer megkérdezi a zene-hozzáférést
   (READ_MEDIA_AUDIO); első telepítésnél soha. Az engedély után is csak a saját mappa.
 - **Mindig sötét**, menta `#8FD3BE` és tejfehér `#F4FBF8` a mély éjszakai zöldön `#0E1B19`.

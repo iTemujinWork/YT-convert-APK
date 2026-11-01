@@ -144,6 +144,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.session)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
 
