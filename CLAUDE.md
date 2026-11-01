@@ -33,6 +33,11 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 
 ## Lejátszó (0.2.0)
 
+**Hűség: 100% (legalább 99%) ugyanaz, mint a tervező csomagja** (a felhasználó döntése, 2026-11-01): a rajz, a
+mozgás, a háttér, minden. A pózok minden vonala, a rajzba írt ringás és lélegzés (az SVG saját animációi), a
+mozgáscsíkok időzítése és a képernyők színkódjai a mérce; ahol az app egy technikát nem tud (maszk, betű), ugyanazt
+a látványt más úton kell előállítani, nem elhagyni. Ami eltér, az hiba, nem ízlés.
+
 A terv a feladatleírás: `docs/spec/0.2.0/DALMA-0.2.0.md`, a képernyők és Dalma pózai mellette. Minden,
 ami a `Zene/Dalma` mappában van, Dalmáé: megmutatja, lejátssza, listába rendezi, szöveg, gomb és súgó
 nélkül. Lépésenként, külön commitokban, a leírás sorrendjében; az 1. lépés (könyvtár) után megálltunk.
