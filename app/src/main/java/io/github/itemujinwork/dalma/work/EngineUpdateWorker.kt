@@ -1,6 +1,7 @@
 package io.github.itemujinwork.dalma.work
 
 import android.content.Context
+import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -32,13 +33,15 @@ class EngineUpdateWorker(context: Context, params: WorkerParameters) : Coroutine
         try {
             engine.prepare()
             EngineUpdater(engine, Prefs(app)).updateIfStale()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             if (e.isCancellation()) throw e
+            Log.w(TAG, "engine update skipped", e)
         }
         return Result.success()
     }
 
     companion object {
+        private const val TAG = "DalmaUpdater"
         private const val NAME = "engine-update"
 
         fun enqueue(context: Context) {

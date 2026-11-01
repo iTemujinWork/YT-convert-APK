@@ -26,6 +26,7 @@ import io.github.itemujinwork.dalma.core.SpaceCheck
 import io.github.itemujinwork.dalma.core.Strategy
 import io.github.itemujinwork.dalma.core.Target
 import io.github.itemujinwork.dalma.core.YtDlpArgs
+import io.github.itemujinwork.dalma.data.Diagnostics
 import io.github.itemujinwork.dalma.data.Library
 import io.github.itemujinwork.dalma.data.MusicStore
 import io.github.itemujinwork.dalma.data.Prefs
@@ -51,6 +52,7 @@ import java.io.File
 class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     private val app = applicationContext
     private val progress = MutableStateFlow(SaveProgress(SavePhase.PREPARING, null, 0, 0))
+    private val diagnostics = Diagnostics(app)
 
     override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(app.getString(R.string.notification_preparing), null)
 
@@ -93,7 +95,22 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         }
     }
 
-    private suspend fun save(target: Target): Result {
+    /**
+     * Whatever goes wrong, the sheet gets a sentence and the hidden log gets the reason. Errors
+     * too: a class R8 broke surfaces as NoClassDefFoundError, which is no Exception.
+     */
+    private suspend fun save(target: Target): Result = try {
+        saveOrThrow(target)
+    } catch (e: Throwable) {
+        if (e.isCancellation()) throw e
+        Log.e(TAG, "save failed unexpectedly", e)
+        diagnostics.crash(e)
+        val outcome = Outcome.Failed(FailureKind.UNKNOWN, e.toString().take(300))
+        diagnostics.finish(outcome)
+        fail(outcome)
+    }
+
+    private suspend fun saveOrThrow(target: Target): Result {
         val engine = Engine(app)
         val prefs = Prefs(app)
         val library = Library(app)
@@ -103,9 +120,12 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         // 1. The engine. On the first run this unpacks for a few seconds and the clip shows it.
         val unpacking = !engine.isUnpacked
         progress.value = SaveProgress(SavePhase.PREPARING, null, 0, 0)
+        diagnostics.start(target, engine.version(), engine.isUpdated)
+        if (unpacking) diagnostics.note("unpacking the engine")
         engine.prepare { fraction ->
             progress.value = SaveProgress(SavePhase.UNPACKING, fraction * UNPACK_SHARE, 0, 0)
         }
+        if (unpacking) diagnostics.note("engine unpacked, yt-dlp ${engine.version() ?: "?"}")
         engine.cleanWorkDir(keepPartials = true)
 
         // 2. Attempts, each one a little different from the last. (The daily yt-dlp update
@@ -155,6 +175,7 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                             } catch (e: Exception) {
                                 if (e.isCancellation()) throw e
                                 Log.w(TAG, "cannot keep ${file.name}", e)
+                                diagnostics.note("cannot keep ${file.name}: ${e.stackTraceToString().take(2_000)}")
                                 counts.failed++
                             } finally {
                                 file.delete()
@@ -171,17 +192,21 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                 }
             } catch (abort: Engine.Abort) {
                 val failure = abort.reason as Failure
+                diagnostics.note("attempt $attempts stopped: ${failure.kind}")
                 engine.cleanWorkDir(keepPartials = failure.kind != FailureKind.DISK_FULL)
                 return finish(target, counts, lastSaved, listTotal, failure)
             }
 
             if (result.exitCode == 0) {
+                if (counts.saved + counts.alreadyHad == 0) diagnostics.note("exit 0 but no song came out:\n${result.stderr.takeLast(6_000)}")
                 engine.cleanWorkDir(keepPartials = false)
                 return finish(target, counts, lastSaved, listTotal, null)
             }
 
             val failure = ErrorClassifier.classify(result.stderr)
             Log.w(TAG, "attempt $attempts failed: ${failure.kind} (${failure.detail})")
+            result.stderr.lines().takeLast(40).forEach { Log.w(TAG, "  | $it") }
+            diagnostics.attempt(attempts, strategy, result.exitCode, failure, result.stderr)
             // A playlist where most songs came through is a result, not a failure.
             if (target is Target.Playlist && counts.saved + counts.alreadyHad > 0) {
                 counts.failed += result.stderr.lineSequence().count { it.trimStart().startsWith("ERROR") }.coerceAtLeast(1)
@@ -204,9 +229,21 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                     applied += remedy
                     val times = timesApplied.getOrDefault(remedy, 0)
                     timesApplied[remedy] = times + 1
+                    diagnostics.note("remedy: $remedy")
                     when (remedy) {
-                        Remedy.UPDATE_ENGINE -> runCatching { updater.updateIfStale(force = true) }.onFailure { if (it.isCancellation()) throw it }
-                        Remedy.RESET_ENGINE -> runCatching { updater.reset() }
+                        Remedy.UPDATE_ENGINE -> {
+                            val updated = runCatching { updater.updateIfStale(force = true) }
+                                .onFailure { if (it.isCancellation()) throw it }
+                                .getOrElse { EngineUpdater.Result.Failed(it.toString()) }
+                            diagnostics.note("engine update: $updated")
+                        }
+                        Remedy.RESET_ENGINE -> {
+                            // The shipped yt-dlp again, and Python and ffmpeg unpacked afresh.
+                            runCatching { updater.reset() }.onFailure { diagnostics.note("reset failed: $it") }
+                            engine.invalidateUnpack()
+                            engine.prepare()
+                            diagnostics.note("engine reset, yt-dlp ${engine.version() ?: "?"}")
+                        }
                         Remedy.RETRY_SOON, Remedy.WAIT_A_BIT -> delay(RetryPlanner.delayMillis(remedy, times))
                         Remedy.OTHER_CLIENTS, Remedy.ANY_FORMAT, Remedy.SIMPLE_PROCESSING -> strategy = RetryPlanner.adjust(strategy, remedy)
                     }
@@ -241,8 +278,9 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             lastSaved != null -> Outcome.Saved(lastSaved)
             counts.alreadyHad > 0 -> Outcome.AlreadyHave
             failure != null -> Outcome.Failed(failure.kind, failure.detail)
-            else -> Outcome.Failed(FailureKind.UNKNOWN, null)
+            else -> Outcome.Failed(FailureKind.UNKNOWN, "no song came out")
         }
+        diagnostics.finish(outcome)
         return if (outcome is Outcome.Failed) fail(outcome) else Result.success(Protocol.outcomeData(outcome))
     }
 

@@ -36,6 +36,8 @@
     <string name="about_engine_unknown">Engine: yt-dlp</string>
     <string name="about_update">A newer Dalma is out.</string>
     <string name="about_how">In YouTube: Share → Dalma.</string>
+    <string name="about_last_failure">Last time it failed: %1$s</string>
+    <string name="about_log_title">Dalma\'s log</string>
     <string name="about_licenses">Licenses</string>
     <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
     <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>

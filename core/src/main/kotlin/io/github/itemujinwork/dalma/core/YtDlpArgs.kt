@@ -78,7 +78,9 @@ object YtDlpArgs {
         addAll(listOf("--encoding", "utf-8"))
         // --print would silence yt-dlp; we want its "already in the archive" lines.
         add("--no-quiet")
-        add("--no-warnings")
+        // Warnings, versions, the JS runtime, the ffmpeg command line: all on stderr, which goes
+        // into the hidden last-save log when something fails. The song itself never sees it.
+        add("--verbose")
 
         when (request.target) {
             is Target.Video -> add("--no-playlist")

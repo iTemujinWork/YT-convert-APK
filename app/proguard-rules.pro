@@ -5,6 +5,10 @@
 -dontwarn org.apache.commons.io.**
 -dontwarn org.apache.commons.compress.**
 
+# commons-compress creates the zip extra fields reflectively (ExtraFieldUtils.register ->
+# newInstance()); without their no-arg constructors every engine unzip fails in release.
+-keep class * implements org.apache.commons.compress.archivers.zip.ZipExtraField { <init>(); }
+
 # kotlinx.serialization
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**

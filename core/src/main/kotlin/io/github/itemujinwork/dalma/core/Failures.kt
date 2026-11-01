@@ -104,15 +104,27 @@ object ErrorClassifier {
 
     fun classify(output: String?): Failure {
         val text = output.orEmpty()
-        val haystack = errorLines(text).ifEmpty { text }.lowercase()
+        val haystack = relevantLines(text).joinToString("\n").lowercase()
         val kind = rules.firstOrNull { rule -> rule.needles.any { haystack.contains(it) } }?.kind
             ?: if (text.contains("Traceback (most recent call last)")) FailureKind.ENGINE_BROKEN else FailureKind.UNKNOWN
         return Failure(kind, shortDetail(text))
     }
 
-    /** Prefer what yt-dlp itself called an error over warnings and progress noise. */
-    private fun errorLines(text: String): String =
-        text.lineSequence().filter { it.contains("ERROR") }.joinToString("\n")
+    /**
+     * Prefer what yt-dlp itself called an error; failing that, skip its warnings and `[debug]`
+     * chatter (a verbose run mentions ffmpeg and formats on every song) and read the rest,
+     * typically a traceback.
+     */
+    private fun relevantLines(text: String): List<String> {
+        val lines = text.lines()
+        val errors = lines.filter { it.contains("ERROR") }
+        if (errors.isNotEmpty()) return errors
+        val quiet = lines.filterNot { line ->
+            val t = line.trimStart()
+            t.startsWith("WARNING") || t.startsWith("[debug]") || t.startsWith("Deleting original file")
+        }
+        return quiet.ifEmpty { lines }
+    }
 
     /** One readable line for the hidden details, without the "ERROR: [youtube] id:" prefix. */
     fun shortDetail(text: String): String {

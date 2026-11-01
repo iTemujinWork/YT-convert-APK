@@ -47,6 +47,37 @@ class Engine(context: Context) {
 
     class RunResult(val exitCode: Int, val stderr: String)
 
+    /**
+     * stderr of a long run, bounded: the start (versions, runtimes, the command line) and the
+     * last lines (the error). What is between is counted, not kept.
+     */
+    private class BoundedText(private val headChars: Int, private val tailLines: Int) {
+        private val head = StringBuilder()
+        private val tail = ArrayDeque<String>()
+        private var dropped = 0
+
+        @Synchronized
+        fun add(rawLine: String) {
+            val line = rawLine.take(MAX_LINE_CHARS)
+            if (head.length < headChars) {
+                head.append(line).append('\n')
+                return
+            }
+            if (tail.size >= tailLines) {
+                tail.removeFirst()
+                dropped++
+            }
+            tail.addLast(line)
+        }
+
+        @Synchronized
+        override fun toString(): String = buildString {
+            append(head)
+            if (dropped > 0) append("... ($dropped lines left out)\n")
+            tail.forEach { append(it).append('\n') }
+        }
+    }
+
     /** Thrown from a line callback to stop the run with a reason of our own. */
     class Abort(val reason: Any) : RuntimeException("aborted")
 
@@ -79,6 +110,11 @@ class Engine(context: Context) {
 
     private fun isUnpacked(dir: File, zip: File): Boolean =
         dir.isDirectory && stampFile(dir).takeIf { it.isFile }?.readText() == stamp(zip)
+
+    /** Makes the next [prepare] unpack everything again, for when the engine looks broken. */
+    fun invalidateUnpack() {
+        listOf(pythonDir, ffmpegDir).forEach { stampFile(it).delete() }
+    }
 
     private fun stampFile(dir: File) = File(dir, ".stamp")
 
@@ -228,12 +264,10 @@ class Engine(context: Context) {
             standardArgs + args
         val process = ProcessBuilder(command).directory(workDir).also { it.environment().putAll(environment) }.start()
         val pid = AtomicInteger(-1)
-        val stderr = StringBuilder()
+        val stderr = BoundedText(headChars = 8_000, tailLines = 300)
         val errReader = thread(name = "yt-dlp-stderr", isDaemon = true) {
             try {
-                process.errorStream.bufferedReader().forEachLine { line ->
-                    if (stderr.length < 64_000) stderr.append(line).append('\n')
-                }
+                process.errorStream.bufferedReader().forEachLine { line -> stderr.add(line) }
             } catch (_: IOException) {
             }
         }
@@ -288,6 +322,7 @@ class Engine(context: Context) {
 
     companion object {
         private const val TAG = "DalmaEngine"
+        private const val MAX_LINE_CHARS = 2_000
     }
 }
 

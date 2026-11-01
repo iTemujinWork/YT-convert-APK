@@ -77,6 +77,10 @@ android {
         }
     }
 
+    // The on-device tests run against the shrunk release APK, the one people install: R8
+    // once removed reflective constructors the engine's unzip needs, and debug never noticed.
+    testBuildType = "release"
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

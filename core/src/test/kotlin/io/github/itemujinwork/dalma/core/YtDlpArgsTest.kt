@@ -31,6 +31,15 @@ class YtDlpArgsTest {
     }
 
     @Test
+    fun `stderr carries the whole story for the hidden log`() {
+        val a = args()
+        assertTrue("--verbose" in a)
+        assertFalse("--no-warnings" in a)
+        assertFalse("--quiet" in a)
+        assertTrue("--no-quiet" in a)
+    }
+
+    @Test
     fun `one song never expands into its playlist, a playlist is taken whole but capped`() {
         val one = args(video)
         assertTrue("--no-playlist" in one)

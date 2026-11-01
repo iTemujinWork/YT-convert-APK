@@ -45,6 +45,23 @@ class FailuresTest {
     }
 
     @Test
+    fun `verbose chatter without an error line is ignored, the traceback counts`() {
+        val stderr = """
+            [debug] Command-line config: ['--verbose']
+            [debug] exe versions: ffmpeg 7.1, ffprobe 7.1
+            WARNING: [youtube] dQw4w9WgXcQ: Some formats may be missing
+            Traceback (most recent call last):
+              File "yt_dlp/__main__.py", line 14, in <module>
+            ModuleNotFoundError: No module named 'yt_dlp.networking'
+        """.trimIndent()
+        assertEquals(FailureKind.ENGINE_BROKEN, kind(stderr))
+        assertEquals("ModuleNotFoundError: No module named 'yt_dlp.networking'", ErrorClassifier.classify(stderr).detail)
+
+        val private = "[debug] exe versions: ffmpeg 7.1\nERROR: [youtube] dQw4w9WgXcQ: Private video. Sign in if you've been granted access"
+        assertEquals(FailureKind.PRIVATE, kind(private))
+    }
+
+    @Test
     fun `detail is short and readable`() {
         val failure = ErrorClassifier.classify("WARNING: x\nERROR: [youtube] dQw4w9WgXcQ: Private video. Sign in if you've been granted access")
         assertEquals("Private video. Sign in if you've been granted access", failure.detail)

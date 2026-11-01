@@ -27,7 +27,7 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 | Hol | Mi |
 | --- | --- |
 | `core/` | Tiszta Kotlin, Android nélkül, helyben is fordul és tesztelhető: linkfelismerés, yt-dlp parancssor, kimenet-értelmezés, hibaosztályozás és újrapróbálási létra, fájlnév, mentett dalok tára, frissítés-ellenőrzés. |
-| `app/` | Az Android app: `engine/` (saját futtató a youtubedl-android binárisai fölött, ellenőrzött yt-dlp-önfrissítés), `work/` (WorkManager előtérben, értesítéssel), `data/` (MediaStore, tár), `share/` (a Megosztás-lap), `home/` (főképernyő, rejtett névjegy), `ui/` (téma, ég, mondat, kabala). |
+| `app/` | Az Android app: `engine/` (saját futtató a youtubedl-android binárisai fölött, ellenőrzött yt-dlp-önfrissítés), `work/` (WorkManager előtérben, értesítéssel), `data/` (MediaStore, tár, az utolsó mentés naplója), `share/` (a Megosztás-lap), `home/` (főképernyő, rejtett névjegy; hiba után a napló egy koppintással megosztható), `ui/` (téma, ég, mondat, kabala). |
 | `docs/mascot/dalma.svg` | Dalma rétegei. `tools/svg2compose.py` ebből generálja a `MascotArt.kt`-t és az ikonokat. A rétegszerződést `tools/check-mascot.py` ellenőrzi. |
 | `tools/dalma-assets.py` | Ha elkészülnek az AI-s képek/videók (magenta háttér), ez vágja ki és készít átlátszó PNG-t, animált WebP-t és hajcsat-maszkot az `app/src/main/assets/dalma/` mappába. Ha a mappa létezik, az app azt használja a vektoros Dalma helyett. |
 | `.github/workflows/build.yml` | Core-tesztek valódi yt-dlp-vel és ffmpeg-gel, app-tesztek, lint, Roborazzi-képernyőképek (a `ci-screenshots` ágra tolva), arm64 APK előnézeti kiadásként, `v*` tagnél aláírt kiadás, emulátoros futás. |
@@ -41,7 +41,10 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
   `EngineIntegrationTest` valódi futással igazol (Opus marad Opus, borító négyzetes, tagek jók).
 - A hibák először `ErrorClassifier`-be kerülnek, utána a `RetryPlanner` dönt: motorfrissítés,
   más YouTube-kliensek, bármilyen formátum, egyszerű feldolgozás. Végleges hibánál Dalma egy
-  mondattal bocsánatot kér; a mondatokat a `Sentences` választja.
+  mondattal bocsánatot kér; a mondatokat a `Sentences` választja. Minden próbálkozás, a yt-dlp
+  bőbeszédű kimenete és a váratlan kivételek a `Diagnostics` naplójába kerülnek (`files/last-save.log`).
+- Az R8 kicsinyítő csak a kiadási buildben fut, ezért a műszeres tesztek (`connectedReleaseAndroidTest`)
+  a kiadási APK-n futnak; a reflexióval példányosított osztályokhoz keep-szabály kell (`proguard-rules.pro`).
 - A kabalát a `docs/mascot/dalma.svg`-ben rajzold, soha nem a generált Kotlinban; futtasd a
   `python3 tools/svg2compose.py`-t és nézd meg a `node tools/render-mascot.js` renderét.
 - Commit-üzenetek angolul, a felhasználói szövegek magyarul (alap) és angolul (`values-en`).

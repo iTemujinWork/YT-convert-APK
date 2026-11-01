@@ -35,7 +35,8 @@ animáció, Dalma állóképekkel jelez.
 A mostani Dalma vektoros rajz (`docs/mascot/dalma.svg`). Ha elkészülnek az AI-val rajzolt képek és
 klipek (lásd a feladatleírást a `docs/spec/` mappában), a `tools/dalma-assets.py` kivágja a magenta
 hátteret, átlátszó PNG-t és animált WebP-t készít az `app/src/main/assets/dalma/` mappába, és az app
-onnantól azokat használja. Hosszan nyomva a főképernyőt előjön a rejtett névjegy: verzió, motor, licencek.
+onnantól azokat használja. Hosszan nyomva a főképernyőt előjön a rejtett névjegy: verzió, motor, licencek,
+és ha a legutóbbi mentés nem sikerült, egy sor az okról (koppintásra a napló megosztható).
 
 ## Telepítés
 
@@ -54,8 +55,11 @@ Az app naponta egyszer megnézi, van-e újabb kiadás, és egy sorral szól: *Va
 - `app/`: Jetpack Compose, WorkManager, MediaStore; a letöltőmotor a
   [youtubedl-android](https://github.com/yausername/youtubedl-android) csomagolta Python + yt-dlp +
   QuickJS + FFmpeg. Teljes build: `./gradlew :app:assembleRelease` (Android SDK kell).
-- Tesztek: Robolectric + Roborazzi képernyőképek (`./gradlew :app:recordRoborazziDebug`), emulátoron a
-  motor és a Zene mappa (`./gradlew :app:connectedDebugAndroidTest`).
+- Tesztek: Robolectric + Roborazzi képernyőképek (`./gradlew :app:recordRoborazziDebug`), emulátoron vagy
+  USB-re dugott telefonon a motor és a Zene mappa, a kicsinyített kiadási APK-n
+  (`./gradlew :app:connectedReleaseAndroidTest`).
+- Ha egy mentés nem sikerül, a rejtett névjegyben (hosszan nyomva a főképernyőt) egy sor mutatja az okot;
+  rákoppintva a teljes napló megosztható, így a hiba telefonkábel nélkül is elküldhető.
 - CI: a `.github/workflows/build.yml` minden pushra lefuttatja a teszteket, a lintet, elkészíti a
   képernyőképeket (a `ci-screenshots` ágra tolja), és feltölti az arm64 APK-t előnézeti kiadásként;
   `v*` tagnél aláírt kiadás készül.

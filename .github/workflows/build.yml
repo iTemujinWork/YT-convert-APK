@@ -171,7 +171,7 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" out/*.apk --title "Dalma ${{ steps.version.outputs.name }}" --generate-notes
 
   emulator:
-    name: On a phone (emulator)
+    name: On a phone (emulator, release APK)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     needs: app
@@ -201,7 +201,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.itemujinwork.dalma.OnlineSmokeTest
+          script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.itemujinwork.dalma.OnlineSmokeTest
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -220,7 +220,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
-          script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.itemujinwork.dalma.OnlineSmokeTest
+          script: ./gradlew --console=plain -PdalmaAbis=x86_64 :app:connectedReleaseAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.itemujinwork.dalma.OnlineSmokeTest
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always() && steps.online.outcome != 'skipped'
         with:
