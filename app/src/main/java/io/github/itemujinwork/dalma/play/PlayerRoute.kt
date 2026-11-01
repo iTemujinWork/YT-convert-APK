@@ -135,6 +135,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         }
     }
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        deleting?.let { doomed -> if (!folder.exists(doomed)) playback?.remove(doomed.id) }
         deleting = null
         onFolderChanged()
     }
@@ -206,6 +207,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                         MusicFolder.Removal.Removed -> {
                             deleting = null
                             thumbs.remove(doomed.id)
+                            playback?.remove(doomed.id) // a deleted song must stop, not keep playing
                             onFolderChanged()
                         }
                         is MusicFolder.Removal.NeedsConsent -> consent.launch(IntentSenderRequest.Builder(removal.intentSender).build())

@@ -78,6 +78,16 @@ class Playback private constructor(private val controller: MediaController) {
         }
     }
 
+    /**
+     * Lets a song go: out of the queue, and if it was the one playing, the next one takes over
+     * (the last one just stops). A deleted file must not keep sounding.
+     */
+    fun remove(songId: Long) {
+        val index = (0 until controller.mediaItemCount).firstOrNull { controller.getMediaItemAt(it).mediaId == songId.toString() } ?: return
+        controller.removeMediaItem(index)
+        if (controller.mediaItemCount == 0) controller.stop()
+    }
+
     fun next() = controller.seekToNextMediaItem()
 
     fun previous() = controller.seekToPreviousMediaItem()

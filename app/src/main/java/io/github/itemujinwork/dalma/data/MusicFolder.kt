@@ -65,6 +65,13 @@ class MusicFolder(context: Context) {
         emptyList()
     }
 
+    /** True while the song's file is still in the folder. */
+    fun exists(song: Song): Boolean = try {
+        resolver.query(song.uri, arrayOf(MediaStore.Audio.Media._ID), null, null, null)?.use { it.moveToFirst() } ?: false
+    } catch (_: Exception) {
+        false
+    }
+
     /** What happened to a song Dalma was asked to let go of. */
     sealed interface Removal {
         data object Removed : Removal
