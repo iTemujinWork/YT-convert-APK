@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.itemujinwork.dalma.R
@@ -139,7 +140,8 @@ fun PlayerScreen(
         Sky(Modifier.fillMaxSize(), state = sky, ambientShootingStars = true)
 
         if (listOrMoving) {
-            Chips(Modifier.offset(y = CHIPS_TOP.dp + shift + rowsRise).padding(start = 24.dp).alpha(rowsAlpha))
+            // Animated positions go through the lambda offset: layout moves, nothing recomposes.
+            Chips(Modifier.offset { IntOffset(0, (CHIPS_TOP.dp + shift + rowsRise).roundToPx()) }.padding(start = 24.dp).alpha(rowsAlpha))
             SongRows(
                 songs = list.songs,
                 currentId = currentId,
@@ -159,14 +161,14 @@ fun PlayerScreen(
                 style = SmallTitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(x = 94.dp, y = 68.dp + shift).padding(end = 24.dp).alpha(1f - bigAlpha),
+                modifier = Modifier.offset { IntOffset(94.dp.roundToPx(), (68.dp + shift).roundToPx()) }.padding(end = 24.dp).alpha(1f - bigAlpha),
             )
             Text(
                 text = song.artist ?: stringResource(R.string.unknown_artist),
                 style = SmallArtist,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset(x = 94.dp, y = 94.dp + shift).padding(end = 24.dp).alpha(1f - bigAlpha),
+                modifier = Modifier.offset { IntOffset(94.dp.roundToPx(), (94.dp + shift).roundToPx()) }.padding(end = 24.dp).alpha(1f - bigAlpha),
             )
             if (list.searchOpen || searchShift > 0.dp) {
                 SearchRow(
@@ -186,7 +188,7 @@ fun PlayerScreen(
             corner = coverCorner,
             shadow = coverShadow,
             modifier = Modifier
-                .offset(x = coverX, y = coverY + if (list.open) shift else 0.dp)
+                .offset { IntOffset(coverX.roundToPx(), (coverY + if (list.open) shift else 0.dp).roundToPx()) }
                 .size(coverSize)
                 .then(if (list.open) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = actions.onClose) else Modifier),
         )
@@ -215,7 +217,7 @@ fun PlayerScreen(
             durationMillis = durationMillis,
             walked = walked,
             onSeek = onSeek,
-            modifier = Modifier.offset(y = lineY - (TOUCH_BAND / 2).dp).fillMaxWidth().padding(horizontal = 24.dp),
+            modifier = Modifier.offset { IntOffset(0, (lineY - (TOUCH_BAND / 2).dp).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp),
         )
 
         if (bigAlpha > 0f) {
