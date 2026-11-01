@@ -4,6 +4,7 @@ import android.content.Context
 import android.system.Os
 import android.util.Log
 import io.github.itemujinwork.dalma.core.EngineVersion
+import io.github.itemujinwork.dalma.core.ZipApp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -16,7 +17,6 @@ import org.apache.commons.compress.archivers.zip.ZipFile as ArchiveFile
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.zip.ZipFile
 import kotlin.concurrent.thread
 
 /**
@@ -218,16 +218,12 @@ class Engine(context: Context) {
         return version
     }
 
-    fun versionInZip(file: File): String? = try {
-        ZipFile(file).use { zip ->
-            zip.getEntry("yt_dlp/version.py")?.let { entry ->
-                val text = zip.getInputStream(entry).bufferedReader().readText()
-                Regex("""__version__\s*=\s*['"]([^'"]+)['"]""").find(text)?.groupValues?.get(1)
-            }
-        }
-    } catch (e: Exception) {
-        Log.w(TAG, "cannot read version from ${file.name}", e)
-        null
+    /**
+     * The zipapp starts with a shebang line, which Android's java.util.zip.ZipFile rejects
+     * ("Entry at offset zero has invalid LFH signature"), so [ZipApp] streams past it.
+     */
+    fun versionInZip(file: File): String? = ZipApp.version(file).also {
+        if (it == null) Log.w(TAG, "cannot read a yt-dlp version from ${file.name}")
     }
 
     fun isNewerThanInstalled(candidate: String): Boolean = EngineVersion.isNewer(candidate, version())

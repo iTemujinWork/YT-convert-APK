@@ -30,6 +30,8 @@ tasks.test {
     //   ./gradlew -p core test -Ddalma.engineTests=true
     systemProperty("dalma.engineTests", System.getProperty("dalma.engineTests") ?: "false")
     System.getProperty("dalma.ytdlp")?.let { systemProperty("dalma.ytdlp", it) }
+    // A real yt-dlp release file (zipapp) for ZipAppTest: ./gradlew -p core test -Ddalma.zipapp=<file>
+    System.getProperty("dalma.zipapp")?.let { systemProperty("dalma.zipapp", it) }
     testLogging {
         events("failed", "skipped")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL

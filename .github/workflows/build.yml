@@ -36,8 +36,12 @@ jobs:
           python3 -m venv /tmp/venv
           /tmp/venv/bin/pip install -q "yt-dlp[default]"
           /tmp/venv/bin/yt-dlp --version
+      - name: The release zipapp, the file the app ships and self-updates to
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/fetch-ytdlp.sh /tmp/yt-dlp.zipapp
       - name: Test
-        run: ./gradlew -p core test -Ddalma.engineTests=true -Ddalma.ytdlp=/tmp/venv/bin/yt-dlp --console=plain
+        run: ./gradlew -p core test -Ddalma.engineTests=true -Ddalma.ytdlp=/tmp/venv/bin/yt-dlp -Ddalma.zipapp=/tmp/yt-dlp.zipapp --console=plain
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
