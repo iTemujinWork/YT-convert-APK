@@ -26,6 +26,7 @@ import io.github.itemujinwork.dalma.core.Shuffle
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
 import io.github.itemujinwork.dalma.data.Song
+import io.github.itemujinwork.dalma.data.SongList
 import io.github.itemujinwork.dalma.home.AboutCard
 import io.github.itemujinwork.dalma.ui.mascot.rememberMascotState
 import io.github.itemujinwork.dalma.ui.rememberSkyState
@@ -100,9 +101,15 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var deleting by remember { mutableStateOf<Song?>(null) }
-    val rows = remember(ordered, query) {
+    // The .m3u lists of the folder, read with the songs; the chosen one narrows the rows in its own order.
+    val lists by produceState(initialValue = emptyList<SongList>(), songs) { value = withContext(Dispatchers.IO) { folder.lists() } }
+    var selectedList by rememberSaveable { mutableStateOf<String?>(null) }
+    val chosen = lists.firstOrNull { it.name == selectedList }
+    val rows = remember(ordered, query, chosen) {
+        val byName = ordered.associateBy { it.fileName }
+        val pool = chosen?.entries?.mapNotNull { byName[it.fileName] }?.distinct() ?: ordered
         val needle = query.trim()
-        if (needle.isEmpty()) ordered else ordered.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
+        if (needle.isEmpty()) pool else pool.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
     }
     fun closeSearch() {
         searchOpen = false
@@ -171,7 +178,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         durationMillis = state.durationMillis.takeIf { queued && it > 0 } ?: song.durationMillis,
         mascot = mascot,
         sky = sky,
-        list = ListUi(open = listOpen, songs = rows, searchOpen = searchOpen, query = query, deleting = deleting),
+        list = ListUi(open = listOpen, songs = rows, searchOpen = searchOpen, query = query, deleting = deleting, lists = lists.map { it.name }, selectedList = chosen?.name),
         actions = ListActions(
             onClose = {
                 closeSearch()
@@ -196,6 +203,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
             },
             onDeleteCancel = { deleting = null },
             onTouch = { touched = true },
+            onSelectList = { selectedList = it },
         ),
         thumbnail = thumbnail,
         sorryMascot = sorryMascot,

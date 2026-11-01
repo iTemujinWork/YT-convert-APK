@@ -301,7 +301,7 @@ class EngineIntegrationTest {
         assertEquals(listOf(ids[1]), events.filterIsInstance<EngineEvent.AlreadyHave>().map { it.id })
         assertEquals(listOf(ids[0], ids[2]), events.filterIsInstance<EngineEvent.Output>().map { it.id })
         assertTrue(events.filterIsInstance<EngineEvent.Output>().all { File(it.path).isFile && it.path.endsWith(".opus") })
-        assertEquals(EngineEvent.PlaylistDone(3), events.last { it is EngineEvent.PlaylistDone })
+        assertEquals(3, (events.last { it is EngineEvent.PlaylistDone } as EngineEvent.PlaylistDone).count)
 
         val tracker = ProgressTracker()
         val seen = mutableListOf<Float>()

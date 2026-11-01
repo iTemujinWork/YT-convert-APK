@@ -141,7 +141,7 @@ fun PlayerScreen(
 
         if (listOrMoving) {
             // Animated positions go through the lambda offset: layout moves, nothing recomposes.
-            Chips(Modifier.offset { IntOffset(0, (CHIPS_TOP.dp + shift + rowsRise).roundToPx()) }.padding(start = 24.dp).alpha(rowsAlpha))
+            Chips(list.lists, list.selectedList, actions.onSelectList, Modifier.offset { IntOffset(0, (CHIPS_TOP.dp + shift + rowsRise).roundToPx()) }.padding(start = 24.dp).alpha(rowsAlpha))
             SongRows(
                 songs = list.songs,
                 currentId = currentId,

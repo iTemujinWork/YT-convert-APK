@@ -39,6 +39,24 @@ class MusicStore(context: Context) {
         return uri
     }
 
+    /** Writes a list (.m3u) next to the songs; an older list of the same name, written by Dalma, is replaced. */
+    fun saveList(fileName: String, text: String): Uri? = try {
+        val files = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        resolver.query(files, arrayOf(MediaStore.MediaColumns._ID), "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} = ?", arrayOf(FOLDER_PATH, fileName), null)?.use { cursor ->
+            while (cursor.moveToNext()) runCatching { resolver.delete(ContentUris.withAppendedId(files, cursor.getLong(0)), null, null) }
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, LIST_MIME)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, FOLDER)
+        }
+        val uri = resolver.insert(files, values) ?: throw IOException("MediaStore refused $fileName")
+        resolver.openOutputStream(uri, "w")?.use { it.write(text.toByteArray()) } ?: throw IOException("cannot open $uri")
+        uri
+    } catch (_: Exception) {
+        null
+    }
+
     /** True while the file is still there (the user may delete it with a file manager). */
     fun exists(uri: Uri): Boolean = try {
         resolver.query(uri, arrayOf(MediaStore.Audio.Media._ID), null, null, null)?.use { it.moveToFirst() } ?: false
@@ -71,6 +89,9 @@ class MusicStore(context: Context) {
     companion object {
         /** Dalma's folder, as MediaStore names it: "Music/Dalma". */
         val FOLDER: String = Environment.DIRECTORY_MUSIC + "/Dalma"
+
+        /** What a .m3u is to MediaStore. */
+        const val LIST_MIME = "audio/x-mpegurl"
 
         /** The same folder the way MediaStore stores and matches it: with a trailing slash. */
         val FOLDER_PATH: String = "$FOLDER/"

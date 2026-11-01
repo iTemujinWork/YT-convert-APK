@@ -17,6 +17,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,6 +98,10 @@ data class ListUi(
     val searchOpen: Boolean = false,
     val query: String = "",
     val deleting: Song? = null,
+    /** The names of the .m3u lists in the folder, in the chips' order. */
+    val lists: List<String> = emptyList(),
+    /** The chosen list, or `null` for "Mind". */
+    val selectedList: String? = null,
 )
 
 /** What the list can do. [onTouch] is any finger on the rows: a shuffled list stays up then. */
@@ -108,26 +114,30 @@ class ListActions(
     val onDeleteConfirm: (Song) -> Unit,
     val onDeleteCancel: () -> Unit,
     val onTouch: () -> Unit = {},
+    val onSelectList: (String?) -> Unit = {},
 )
 
-/** The chips: "Mind" is on, "+" will make a list (step 7). */
+/** The chips: "Mind", then every list of the folder, then "+". The chosen one is mint. */
 @Composable
-internal fun Chips(modifier: Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Chip(stringResource(R.string.list_all), active = true)
-        Chip("+", active = false)
+internal fun Chips(lists: List<String>, selected: String?, onSelect: (String?) -> Unit, modifier: Modifier) {
+    Row(modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Chip(stringResource(R.string.list_all), active = selected == null) { onSelect(null) }
+        for (name in lists) Chip(name, active = selected == name) { onSelect(name) }
+        Chip("+", active = false) { /* a new list: how it is named and filled is not in the brief yet */ }
     }
 }
 
 @Composable
-private fun Chip(text: String, active: Boolean) {
+private fun Chip(text: String, active: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(14.dp)
     Text(
         text = text,
         style = ChipText,
         color = if (active) DalmaColors.Night else DalmaColors.Pale,
+        maxLines = 1,
         modifier = Modifier
             .then(if (active) Modifier.background(DalmaColors.Mint, shape) else Modifier.border(1.dp, DalmaColors.DeepTeal, shape))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }

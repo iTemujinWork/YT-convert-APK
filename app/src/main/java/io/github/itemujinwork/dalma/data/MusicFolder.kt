@@ -12,6 +12,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
+import io.github.itemujinwork.dalma.core.M3u
 
 /** One song in the Music/Dalma folder, the way MediaStore knows it. */
 data class Song(
@@ -27,6 +28,9 @@ data class Song(
     val addedAtSeconds: Long,
 )
 
+/** A list in the folder: its name is the file's, its songs are file names in its order. */
+data class SongList(val name: String, val fileName: String, val uri: Uri, val entries: List<M3u.Entry>)
+
 /**
  * Everything in Music/Dalma is Dalma's. This reads the folder from MediaStore and keeps
  * nothing anywhere else: a file copied in by hand shows up, one deleted elsewhere is let go.
@@ -39,6 +43,23 @@ class MusicFolder(context: Context) {
     fun read(): List<Song> = try {
         resolver.query(collection, PROJECTION, SELECTION, arrayOf(MusicStore.FOLDER_PATH), SORT)?.use { cursor ->
             buildList { while (cursor.moveToNext()) songFrom(cursor)?.let(::add) }
+        } ?: emptyList()
+    } catch (_: Exception) {
+        emptyList()
+    }
+
+    /** The .m3u files of the folder, by name; one that cannot be read is skipped. */
+    fun lists(): List<SongList> = try {
+        val files = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        resolver.query(files, arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME), "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?", arrayOf(MusicStore.FOLDER_PATH, "%." + M3u.EXTENSION), MediaStore.MediaColumns.DISPLAY_NAME)?.use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) {
+                    val name = cursor.getString(1) ?: continue
+                    val uri = ContentUris.withAppendedId(files, cursor.getLong(0))
+                    val text = runCatching { resolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() } }.getOrNull() ?: continue
+                    add(SongList(M3u.nameOf(name), name, uri, M3u.parse(text)))
+                }
+            }
         } ?: emptyList()
     } catch (_: Exception) {
         emptyList()

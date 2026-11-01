@@ -47,8 +47,8 @@ sealed interface EngineEvent {
     /** yt-dlp skipped a song because the archive says we have it. */
     data class AlreadyHave(val id: String?) : EngineEvent
 
-    /** The whole playlist has been walked. */
-    data class PlaylistDone(val count: Int?) : EngineEvent
+    /** The whole playlist has been walked; its title names the .m3u the app writes. */
+    data class PlaylistDone(val count: Int?, val title: String? = null) : EngineEvent
 }
 
 object EngineOutput {
@@ -64,7 +64,9 @@ object EngineOutput {
             line.startsWith(YtDlpArgs.MARK_PLAN) -> parsePlan(payload(line, YtDlpArgs.MARK_PLAN))
             line.startsWith(YtDlpArgs.MARK_PHASE) -> EngineEvent.Processing(id(payload(line, YtDlpArgs.MARK_PHASE)))
             line.startsWith(YtDlpArgs.MARK_FILE) -> parseFile(payload(line, YtDlpArgs.MARK_FILE))
-            line.startsWith(YtDlpArgs.MARK_LIST) -> EngineEvent.PlaylistDone(payload(line, YtDlpArgs.MARK_LIST).toIntOrNull())
+            line.startsWith(YtDlpArgs.MARK_LIST) -> payload(line, YtDlpArgs.MARK_LIST).split('\t', limit = 2).let { parts ->
+                EngineEvent.PlaylistDone(parts[0].trim().toIntOrNull(), parts.getOrNull(1)?.trim()?.ifEmpty { null })
+            }
             line.contains(YtDlpArgs.ARCHIVE_SKIP) -> EngineEvent.AlreadyHave(ARCHIVE_LINE.find(line)?.groupValues?.get(1))
             else -> null
         }

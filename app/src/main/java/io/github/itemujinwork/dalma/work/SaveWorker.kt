@@ -10,6 +10,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.core.Decision
+import io.github.itemujinwork.dalma.core.M3u
 import io.github.itemujinwork.dalma.core.EngineEvent
 import io.github.itemujinwork.dalma.core.EngineOutput
 import io.github.itemujinwork.dalma.core.EngineRequest
@@ -137,6 +138,8 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         val counts = Counts()
         var lastSaved: SavedSong? = null
         var listTotal: Int? = null
+        var listTitle: String? = null
+        val listEntries = ArrayList<M3u.Entry>() // the playlist's songs, in its order, for the .m3u
         val base = if (unpacking) UNPACK_SHARE else 0f
 
         while (true) {
@@ -171,6 +174,7 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                             try {
                                 val song = runBlocking { keep(file, event.id ?: meta?.id ?: file.nameWithoutExtension, meta, store, library) }
                                 lastSaved = song
+                                listEntries += M3u.Entry(song.fileName, song.title, meta?.durationSeconds?.toLong())
                                 counts.saved++
                             } catch (e: Exception) {
                                 if (e.isCancellation()) throw e
@@ -181,8 +185,14 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                                 file.delete()
                             }
                         }
-                        is EngineEvent.AlreadyHave -> counts.alreadyHad++
-                        is EngineEvent.PlaylistDone -> event.count?.let { listTotal = it }
+                        is EngineEvent.AlreadyHave -> {
+                            counts.alreadyHad++
+                            event.id?.let { id -> runBlocking { library.all() }.firstOrNull { it.videoId == id } }?.let { listEntries += M3u.Entry(it.fileName, it.title, null) }
+                        }
+                        is EngineEvent.PlaylistDone -> {
+                            event.count?.let { listTotal = it }
+                            listTitle = event.title
+                        }
                         is EngineEvent.Progress -> Unit
                     }
                     tracker.onEvent(event)?.let { fraction ->
@@ -199,6 +209,7 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
             if (result.exitCode == 0) {
                 if (counts.saved + counts.alreadyHad == 0) diagnostics.note("exit 0 but no song came out:\n${result.stderr.takeLast(6_000)}")
+                writeList(target, listTitle, listEntries, store)
                 engine.cleanWorkDir(keepPartials = false)
                 return finish(target, counts, lastSaved, listTotal, null)
             }
@@ -210,6 +221,7 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             // A playlist where most songs came through is a result, not a failure.
             if (target is Target.Playlist && counts.saved + counts.alreadyHad > 0) {
                 counts.failed += result.stderr.lineSequence().count { it.trimStart().startsWith("ERROR") }.coerceAtLeast(1)
+                writeList(target, listTitle, listEntries, store)
                 engine.cleanWorkDir(keepPartials = false)
                 return finish(target, counts, lastSaved, listTotal, null)
             }
@@ -267,6 +279,13 @@ class SaveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
         )
         library.add(song)
         return song
+    }
+
+    /** A shared YouTube playlist becomes "<its title>.m3u" in the folder, its songs in its order. */
+    private fun writeList(target: Target, title: String?, entries: List<M3u.Entry>, store: MusicStore) {
+        if (target !is Target.Playlist || entries.isEmpty()) return
+        val name = M3u.fileNameFor(title ?: target.listId)
+        if (store.saveList(name, M3u.write(entries)) == null) diagnostics.note("could not write $name")
     }
 
     private fun finish(target: Target, counts: Counts, lastSaved: SavedSong?, listTotal: Int?, failure: Failure?): Result {

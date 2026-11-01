@@ -175,7 +175,7 @@ class ScreenshotTest {
     }
 
     @Test
-    fun list_rows() = player("list_rows", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs))
+    fun list_rows() = player("list_rows", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, lists = listOf("YouTube Mix", "Futás", "Este")))
 
     @Test
     fun list_search() = player("list_search", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, searchOpen = true))

@@ -137,7 +137,7 @@ object YtDlpArgs {
         addAll(listOf("--print", "post_process:$MARK_PHASE %(id)s"))
         addAll(listOf("--print", "after_move:$MARK_FILE %(id)s|%(filepath)s"))
         if (request.target is Target.Playlist) {
-            addAll(listOf("--print", "playlist:$MARK_LIST %(playlist_count,n_entries|)s"))
+            addAll(listOf("--print", "playlist:$MARK_LIST %(playlist_count,n_entries|)s\t%(playlist_title|)s"))
         }
 
         // Plain ASCII names inside our private folder; the real name is given when saving.
