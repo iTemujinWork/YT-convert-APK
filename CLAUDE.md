@@ -37,6 +37,10 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 
 ## Hogyan dolgozz
 
+- **Csendben, ami csak ad** (a felhasználó kérése, 2026-11-01): biztonság, megbízhatóság, önjavítás,
+  háttérben futó karbantartás és kényelem kérdezés nélkül épül be, ha semmit nem vesz el, és a
+  kliensnek nem kell tudnia róla („hip-hop, és töltődik a kedvenc szám”). Ami elvenne valamit, a
+  felhasználó elé kerülne, pénzbe kerül, vagy apukája telefonján futna, az továbbra is az ő döntése.
 - Helyben: `./gradlew -p core test` (gyors), motorteszt: `-Ddalma.engineTests=true -Ddalma.ytdlp=<yt-dlp>`.
   Az app csak a CI-ban fordul (a dl.google.com nem elérhető ebből a környezetből); a CI
   képernyőképeit a `ci-screenshots` ágon nézd meg, hibáit a futás naplójából javítsd.
