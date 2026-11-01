@@ -12,7 +12,7 @@ Nincs beállítás, nincs gomb, nincs lista. A formátumot, a minőséget és a 
 - **Opus, ahogy a YouTube adja** (251-es folyam, kb. 160 kbit/s), átkódolás nélkül; ha egy dalhoz nincs
   Opus, AAC (`.m4a`). Előadó, cím, album, év és **négyzetes borító** a fájlba írva, hogy a gyári lejátszó
   rendesen mutassa.
-- **A Zene mappába ment** (`Előadó – Cím.opus`), tárhely-engedély nélkül, és soha nem ír felül semmit.
+- **A Zene/Dalma mappába ment** (`Előadó – Cím.opus`), tárhely-engedély nélkül, és soha nem ír felül semmit.
 - **Érti a linkeket**: Shorts, youtu.be, YouTube Music, mobillinkek, megosztott szöveg közepén is.
   Listából megosztott dalnál csak azt az egyet menti, listalinknél az egész listát (legfeljebb 300-at).
 - **Már megvan**: ugyanazt a dalt nem tölti le kétszer, csak annyit mond: *Ez már megvan.*

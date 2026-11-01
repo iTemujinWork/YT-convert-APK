@@ -14,7 +14,8 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
 - **Mentés a `Zene/Dalma` mappába** MediaStore-on át (`RELATIVE_PATH = Music/Dalma/`), `Előadó – Cím.opus`,
   soha nem ír felül semmit. Ez Dalma saját könyvtára: látható a Fájlkezelőben, más lejátszó is
   lejátszhatja, nincs titkosítva, nincs elrejtve, és túléli az app törlését. (Döntés: 2026-11-01; az
-  első kiadások a `Zene` gyökerébe mentettek.)
+  első kiadások a `Zene` gyökerébe mentettek.) A 0.2.0 lejátszója ezt a mappát olvassa
+  (`data/MusicFolder`), adatbázis nélkül.
 - **Tiszta lap**: Dalma csak a `Zene/Dalma` mappát nézi és listázza; más zenéhez soha nem nyúl.
 - **Engedélyek**: csak internet és értesítés. (ACCESS_NETWORK_STATE-et a WorkManager amúgy is behozza; a
   FOREGROUND_SERVICE és FOREGROUND_SERVICE_DATA_SYNC telepítéskor járó, soha nem kérdezett engedély, az

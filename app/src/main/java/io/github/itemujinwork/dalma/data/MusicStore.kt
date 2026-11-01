@@ -11,8 +11,9 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Writes finished songs into the Music folder through MediaStore: no storage permission,
- * the stock player sees them at once, and a name clash gets "(1)" instead of overwriting.
+ * Writes finished songs into the Music/Dalma folder through MediaStore: no storage permission,
+ * other players see them at once, and a name clash gets "(1)" instead of overwriting.
+ * Everything in that folder is Dalma's; [MusicFolder] reads it back.
  */
 class MusicStore(context: Context) {
     private val resolver = context.applicationContext.contentResolver
@@ -23,7 +24,7 @@ class MusicStore(context: Context) {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
             put(MediaStore.Audio.Media.MIME_TYPE, mimeTypeFor(extension))
-            put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC)
+            put(MediaStore.Audio.Media.RELATIVE_PATH, FOLDER)
             put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
         val uri = resolver.insert(collection, values) ?: throw IOException("MediaStore refused $fileName")
@@ -68,6 +69,12 @@ class MusicStore(context: Context) {
     }
 
     companion object {
+        /** Dalma's folder, as MediaStore names it: "Music/Dalma". */
+        val FOLDER: String = Environment.DIRECTORY_MUSIC + "/Dalma"
+
+        /** The same folder the way MediaStore stores and matches it: with a trailing slash. */
+        val FOLDER_PATH: String = "$FOLDER/"
+
         /** The MIME type Android itself pairs with the extension, so MediaStore keeps the name. */
         fun mimeTypeFor(extension: String): String =
             MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
