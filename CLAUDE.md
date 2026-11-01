@@ -31,17 +31,13 @@ képernyőtervek: `docs/spec/` (PDF). Ez a fájl a döntéseket rögzíti, hogy 
   (`Diagnostics` fájl, logcat) csak a fejlesztőé; a névjegyen hibasor és naplómegosztás nem lehet.
 - Terjesztés APK-val a GitHub Releases oldalról; aláírókulcs a tulajdonosnál (CI titkok).
 
-## Lejátszó (döntés 2026-11-01, tervezés alatt)
+## Lejátszó (0.2.0)
 
-Dalma ikonjára koppintva nem csak áll: a saját `Zene/Dalma` gyűjteményét játssza le, ugyanazzal az
-elvvel (minimális, sötét, kabala, egy mondat, semmi reklám és zsúfoltság). A Megosztás-lap és a letöltés
-változatlan. Javasolt irány, a felhasználóval ötletelve: borítórács a csillagos ég alatt, legfrissebb
-elöl; koppintás a borítóra = szól; a hajcsat a lejátszógomb (koppintás indít/megállít, a dallal telik,
-húzva teker); Dalmán simítás = következő/előző; Dalma fülhallgatóval, csukott szemmel ringatózik a hang
-erejére (mikrofon nélkül, a lejátszóból); „Előadó – Cím” Fraunces betűvel, mint Dalma mondata; hosszan
-nyomott borító elúszik, pár másodpercig visszahozható („Elengedtem.”); háttérben is szól rendszer-
-értesítéssel (Media3, FOREGROUND_SERVICE_MEDIA_PLAYBACK telepítéskor járó engedély). Se kereső, se
-rendezés, se beállítás.
+A terv a feladatleírás: `docs/spec/0.2.0/DALMA-0.2.0.md`, a képernyők és Dalma pózai mellette. Minden,
+ami a `Zene/Dalma` mappában van, Dalmáé: megmutatja, lejátssza, listába rendezi, szöveg, gomb és súgó
+nélkül. Lépésenként, külön commitokban, a leírás sorrendjében; az 1. lépés (könyvtár) után megálltunk.
+Ami a leírásban nincs, az nincs a képernyőn. A Megosztás-lap és a letöltés változatlan; csak az nyúl
+hozzá, ami a lejátszóhoz kell.
 
 ## Szerkezet
 
