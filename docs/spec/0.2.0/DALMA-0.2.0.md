@@ -26,7 +26,8 @@ Egy mondatban: **minden, ami a `Zene/Dalma` mappában van, Dalmáé; megmutatja,
 6. **Keverés.** Hosszú nyomás → lista-mód, a sorok animálva átrendeződnek, aztán vissza magától. Újra: ugyanígy, visszaáll a sorrend. A szóló dal elöl marad.
 7. **Listák.** `.m3u` olvasás és írás ugyanabban a mappában, relatív útvonalakkal. A „+" csip új listát csinál. YouTube-lejátszási lista megosztásából a letöltés végén magától `.m3u` lesz.
 8. **Indítás, ha van zene.** A köszönés után Dalma a sarokba lép, és előjön a lejátszó (lásd a mozgásokat).
-9. **Dalma a lejátszóban.** Nappal / este állapot.
+9. **Dalma a lejátszóban.** Nappal / este állapot. Megállításkor este kinyitja a szemét; a borító 0.94-re megy össze.
+9b. **Szerkesztés.** Dupla koppintás a dalon → cím, előadó szerkeszthető, a Borító sorra koppintva kép választható a telefon fotóalbumaiból (csak onnan). Mentés a fájl címkéibe (Opus: Vorbis comment + METADATA_BLOCK_PICTURE; AAC: iTunes-címkék), nem adatbázisba. Teszt: a módosított fájlt egy másik lejátszó is a javított adattal mutatja.
 10. **A letöltő animációja.** Nincs elfordulás, nincs nagyítás. A csat üresen jön, alulról, lökésekben telik; Dalma lélegzik, a fejét kicsit a csat felé billenti, oda-odapillant. A végén örül, ahogy eddig.
 11. **Verzió 0.2.0.** README egy sorral, ami elindítja. CHANGELOG három sorral.
 
@@ -88,23 +89,41 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 | a vonal húzása | tekerés; közben látszik az idő |
 | lista lehúzása (határozottan) | kereső |
 | sor elhúzása balra | törlés: Töröljem? / Igen |
+| dupla koppintás (borítón, címen vagy a lista sorában) | szerkesztés (lásd lent) |
+
+**Szerkesztés** (`design/Lejatszo-Szerkeszt.png`, `anim-szerkesztes.png`)
+
+- Dupla koppintás. A borítón az első koppintás azonnal szól/megáll; ha 300 ms-on belül jön a második, ezt visszavonjuk és szerkesztés nyílik. A címen és a lista sorában nincs ilyen ütközés.
+- Ugyanaz a képernyő alakul át, 500 ms: a borító felmegy (fent 60) és 160-asra zsugorodik; a nagy cím elhalványul; alatta három sor jön 6 dp-ről felúszva: cím (Fraunces 22, tej, fent 250), előadó (Nunito 15, halvány, fent 306), Borító (Nunito 15, tompa, fent 354 — nem beviteli mező, hanem egy sor, amire koppintva a képválasztó nyílik; a „Borító" szó az egyetlen ilyen felirat az appban). Minden sor alatt 1 px mélyteál vonal, a kurzor menta. Jobbra lent egy „Mentés" pirula (menta háttér, éj szöveg, fent 412). A billentyűzet feljön.
+- A Borító sorra koppintva a rendszer saját képválasztója nyílik (`PickVisualMedia`, `ImageOnly`): csak a telefon fotóalbumai, kamera és más forrás nincs, engedélykérés sincs. A választót nem mi rajzoljuk, a rendszeré — ezért nincs a terven. A kiválasztott kép középre vágva négyzet lesz, legfeljebb 1000 × 1000, JPEG 85; a borító 500 ms alatt átúszik az újba, és vele a háttér meg a vonal színe is (Palette újra). A választó bezárása után a mezők maradnak, a billentyűzet nem jön vissza magától.
+- Mentés: a billentyűzet lemegy, a sorok visszaalakulnak címmé, a borító visszanő; Dalma csatja egyenesbe áll (300 ms), a vonal alatt „Megjegyeztem." (Fraunces 20, menta) 1,2 másodpercig, aztán a csat visszacsúszik.
+- Elvetés: lehúzás vagy koppintás a mezőkön kívül — minden visszaáll, nem történt semmi. Nincs „Mégse" gomb.
+- A címkék a fájlba íródnak; a lista és a „most szól" azonnal a frissített adatot mutatja.
 
 ## Mozgás
 
 Szabály: egyszerre egy mozgás; 200–400 ms; lassuló (`cubic-bezier(.2,.8,.2,1)`); semmi pattogás, kivéve Dalmát. Semmi nem ugrik: ami eltűnik, az elhalványul vagy elcsúszik.
+
+Két mozgás között legyen levegő: a köszönés után egy teljes másodperc, és csak aztán lép a sarokba. Ha az egyik a másikba ér, mindkettő eltűnik. Szerkesztésnél is: a mezők eltűnnek, és csak utána nő vissza a borító.
+
+Ami együtt tartozik, együtt mozog: ha a szem elnéz (2,2 jobbra, 2,4 fel), a felső szemhéj vonala ugyanazt az elmozdulást kapja, ugyanazzal az időzítéssel — különben a szem kibújik a vonal fölé. A szemöldök marad.
+
+Dalma köszönése mozgás, nem két kép: a fej 4°-ot billen (előtte egy leheletnyi ellenmozdulat), a hátsó haj 100 ms-mal, a frufru 150 ms-mal később követi; a bal szem függőlegesen összehúzódik egy vonalig (nem átvált), a szemhéj íve akkor tűnik elő; a szemöldök és a száj átmorfol. 1,2 s az egész. Éjjel nem kacsint: álmosan, félig nyitott szemmel ébred, és a sarokban csukott szemmel hallgat.
 
 **Indítás, ha van zene** (`anim-inditas-zenevel.png`)
 
 | mikor | mi |
 | --- | --- |
 | 0–600 ms | Dalma nagyban (440) megjelenik: 0 → 1 opacitás, 0.96 → 1 nagyítás — pontosan mint az üres főképernyőn |
-| 800–1600 ms | kacsint |
-| 2000–2700 ms | a bal alsó sarokba lép és 190-esre zsugorodik (origó: bal alsó sarok); közben a háttér felveszi a dal színét |
-| 2300–2900 ms | a borító beúszik: 0 → 1 opacitás, 0.92 → 1 nagyítás |
-| 2600–3100 ms | cím és előadó: 0 → 1, 8 dp-ről felcsúszva |
-| 2900–3500 ms | a vonal kirajzolódik balról jobbra |
+| 800–2000 ms | köszön: billen a fej, a haj követi, kacsint, vissza |
+| 2000–3000 ms | áll, néz rád — levegő a két mozgás között |
+| 3000–3700 ms | a bal alsó sarokba lép és 190-esre zsugorodik (origó: bal alsó sarok); közben a háttér felveszi a dal színét |
+| 3300–3900 ms | a borító beúszik: 0 → 1 opacitás, 0.92 → 1 nagyítás |
+| 3600–4100 ms | cím és előadó: 0 → 1, 8 dp-ről felcsúszva |
+| 3900–4500 ms | a vonal kirajzolódik balról jobbra |
+| 4200–4800 ms | a sarokban a köszönő figurából hallgató lesz (nappal nyitott szem, este csukott) |
 
-Ha nincs zene: az első 1600 ms ugyanez, és ennyi — marad az üres főképernyő.
+Ha nincs zene: az első 2000 ms ugyanez, és ennyi — marad az üres főképernyő. Éjjel (`anim-inditas-zenevel-ejjel.png`): a kacsintás helyett álmos ébredés — a falnak dőlésből kiegyenesedik, félig nyitott szem, puha mosoly —, a többi ugyanaz.
 
 **Lista-mód be és ki** (`anim-lista-es-keveres.png`, Apple Music-féle)
 
