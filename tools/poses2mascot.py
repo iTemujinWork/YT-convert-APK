@@ -24,9 +24,31 @@ ORDER = [
     "mouth_smile", "mouth_happy", "mouth_sorry", "mouth_sleepy",
     "eye_l_open", "eye_l_closed", "eye_l_happy", "eye_l_sleepy",
     "eye_r_open", "eye_r_closed", "eye_r_happy", "eye_r_sleepy",
-    "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry",
+    "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry", "brow_l_wink", "brow_r_wink", "eye_l_wink",
     "hair_front", "clip", "drop", "sparkles", "zz",
 ]
+
+
+_GLYPHS = {}
+
+
+def glyph_path(letter):
+    """The letter's outline from the app's Fraunces as absolute M/L/Q/C/Z tokens in font units (y up), and the em size."""
+    if letter in _GLYPHS:
+        return _GLYPHS[letter]
+    try:
+        from fontTools.ttLib import TTFont
+        from fontTools.pens.svgPathPen import SVGPathPen
+        font = TTFont(os.path.join(ROOT, "app", "src", "main", "res", "font", "fraunces.ttf"))
+        glyph_set = font.getGlyphSet()
+        name = font.getBestCmap()[ord(letter)]
+        pen = SVGPathPen(glyph_set)
+        glyph_set[name].draw(pen)
+        tokens = re.findall(r"[MLQCZHV]|-?\d*\.?\d+", pen.getCommands().replace("Z", " Z "))
+        _GLYPHS[letter] = (tokens, font["head"].unitsPerEm)
+    except Exception as e:  # no fontTools: the caller falls back to a stroked z
+        _GLYPHS[letter] = None
+    return _GLYPHS[letter]
 
 
 def matrix(transform):
@@ -72,8 +94,7 @@ def shapes_of(path):
                     gid = counter[0]; counter[0] += 1
                 walk(child, matrix(child.get("transform")) if child.get("transform") else m, gid)
                 continue
-            if child.get("clip-path"):
-                continue  # the fringe's shadow lives inside a clip the app cannot draw
+            clipped = child.get("clip-path") is not None  # the fringe's shadow, clipped to the face in the file
             attrs = {k: child.get(k) for k in KEEP if child.get(k) is not None}
             if "fill" not in attrs:  # SVG's default fill is black; a stroke-only line means none
                 attrs["fill"] = "none" if attrs.get("stroke") else "#000000"
@@ -89,12 +110,35 @@ def shapes_of(path):
                         d.append(t); i += 1
                     else:
                         x, y = apply(m, float(t), float(tokens[i + 1])); pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}"); i += 2
-                out.append({"tag": "path", "key": key, "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group})
+                out.append({"tag": "path", "key": key, "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group, "clipped": clipped})
             elif tag in ("ellipse", "circle"):
                 x, y = apply(m, float(child.get("cx")), float(child.get("cy")))
                 rx = float(child.get("rx") or child.get("r")) * SCALE
                 ry = float(child.get("ry") or child.get("r")) * SCALE
                 out.append({"tag": "ellipse", "key": key, "attrs": attrs, "cx": x, "cy": y, "rx": rx, "ry": ry, "pts": [(x, y)], "group": group})
+            elif tag == "text" and child.text and child.text.strip() == "z" and glyph_path("z") is not None:
+                # The real letter: Fraunces's z outline, set at the text's size on its baseline.
+                size = float(child.get("font-size", "12"))
+                x0, y0 = float(child.get("x")), float(child.get("y"))
+                tokens, upm = glyph_path("z")
+                d, pts, i, last = [], [], 0, (0.0, 0.0)
+                def put(gx, gy):
+                    x, y = apply(m, gx * size / upm + x0, y0 - gy * size / upm)
+                    pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}")
+                while i < len(tokens):
+                    t = tokens[i]
+                    if t in "MLQCZ":
+                        d.append(t); i += 1
+                    elif t == "H":  # horizontal line: one number, the y stays
+                        last = (float(tokens[i + 1]), last[1]); d.append("L"); put(*last); i += 2
+                    elif t == "V":
+                        last = (last[0], float(tokens[i + 1])); d.append("L"); put(*last); i += 2
+                    else:
+                        last = (float(t), float(tokens[i + 1])); put(*last); i += 2
+                attrs = {"fill": child.get("fill", "#8FD3BE")}
+                if child.get("opacity"):
+                    attrs["opacity"] = child.get("opacity")
+                out.append({"tag": "path", "key": (tag, f"{x0},{y0},{size}", attrs["fill"], None), "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group})
             elif tag == "text" and child.text and child.text.strip() == "z":
                 # The sleepy "z" letters: the app draws no text, so a z is a stroke of its size.
                 size = float(child.get("font-size", "12"))
@@ -130,6 +174,8 @@ def base_layers(shapes):
     stage = "body"
     for s in shapes:
         cx, cy, width = centre(s)
+        if s.get("clipped"):
+            layers["head"].append(s); continue  # drawn right over the face, under the fringe that hides the rest
         # The hair clip sits inside the fringe group: the mint triangle and its white tick, high on the right.
         if cy < 70 and cx > 110 and (s["attrs"].get("fill") == "#8FD3BE" or s["attrs"].get("stroke") == "#F4FBF8"):
             if s["attrs"].get("fill") == "#8FD3BE" and not any(t.get("id") == "clip_shape" for t in layers["clip"]):
@@ -165,6 +211,7 @@ VARIANTS = {
     "almos.svg": ("sleepy", "zz"),
     "hallgat-este.svg": ("closed", None),
     "bocsanat.svg": ("sorry", "drop"),
+    "kacsint.svg": ("wink", None),
 }
 
 
@@ -177,9 +224,10 @@ def add_variants(layers, base_keys):
             if cx < 66 or cx > 134:
                 if afar: layers[afar].append(s)
             elif cy < 86:
-                if mood == "sorry": layers[f"brow_{side(cx)}_sorry"].append(s)
+                if mood in ("sorry", "wink"): layers[f"brow_{side(cx)}_{mood}"].append(s)
             elif cy < 102:
                 if mood in ("happy", "sleepy", "closed"): layers[f"eye_{side(cx)}_{mood}"].append(s)
+                elif mood == "wink" and s["tag"] == "path" and cx < 100: layers["eye_l_wink"].append(s)
             else:
                 if mood in ("happy", "sorry", "sleepy"): layers[f"mouth_{mood}"].append(s)
     return layers

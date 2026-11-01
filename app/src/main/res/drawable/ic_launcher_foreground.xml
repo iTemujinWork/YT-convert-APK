@@ -72,6 +72,13 @@
             android:strokeColor="#FFC99A86"
             android:strokeWidth="1.44" />
         <path
+            android:pathData="M 163.2,103.2 Q 163.2,86.4 148.8,82.8 Q 132,78 120,86.4 Q 110.4,93.6 100.8,90 Q 86.4,85.2 79.2,103.2"
+            android:strokeColor="#FFEBCDBB"
+            android:strokeAlpha="0.8"
+            android:strokeWidth="6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
             android:pathData="M 101.04,130.8 A 8.64,5.52 0 0,1 92.4,136.32 A 8.64,5.52 0 0,1 83.76,130.8 A 8.64,5.52 0 0,1 92.4,125.28 A 8.64,5.52 0 0,1 101.04,130.8 Z"
             android:fillColor="#FFF2B3A6"
             android:fillAlpha="0.62" />

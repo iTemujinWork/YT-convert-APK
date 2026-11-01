@@ -252,12 +252,14 @@ private fun DrawScope.drawFace(state: MascotState) {
 private fun DrawScope.drawExpression(state: MascotState, expression: Expression, alpha: Float) {
     if (alpha <= 0f) return
     val v = variants(expression)
-    drawLayer(v.mouth, alpha)
-    drawLayer(v.browL, alpha)
-    drawLayer(v.browR, alpha)
-
     val blink = state.blinkFrame
     val openEyes = expression == Expression.NEUTRAL || expression == Expression.SORRY
+    // The designer's wink (kacsint.svg): the viewer's left eye closes to an arc, both brows lift a touch.
+    val winking = state.wink && openEyes && blink == 0
+    drawLayer(v.mouth, alpha)
+    drawLayer(if (winking) "brow_l_wink" else v.browL, alpha)
+    drawLayer(if (winking) "brow_r_wink" else v.browR, alpha)
+
     var eyeL = v.eyeL
     var eyeR = v.eyeR
     if (openEyes) {
@@ -265,7 +267,7 @@ private fun DrawScope.drawExpression(state: MascotState, expression: Expression,
             1 -> { eyeL = "eye_l_sleepy"; eyeR = "eye_r_sleepy" }
             2 -> { eyeL = "eye_l_closed"; eyeR = "eye_r_closed" }
         }
-        if (state.wink && blink == 0) eyeR = "eye_r_closed"
+        if (winking) eyeL = "eye_l_wink"
     } else if (expression == Expression.SLEEPY && blink == 2) {
         eyeL = "eye_l_closed"
         eyeR = "eye_r_closed"
