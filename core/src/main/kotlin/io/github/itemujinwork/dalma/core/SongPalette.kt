@@ -12,8 +12,11 @@ data class SongPalette(val dominant: Int, val vivid: Int) {
     /** The top of the background: a little of the dominant colour in the night, less in the evening. */
     fun top(evening: Boolean): Int = mix(NIGHT, dominant, if (evening) 0.22f else 0.32f)
 
-    /** The walked part of the line: a quarter of the vivid colour in white. */
-    fun walkedLine(): Int = mix(WHITE, vivid, 0.25f)
+    /**
+     * The walked part of the line: the vivid colour lightened with a quarter of white. (The
+     * sheet's numbers say so: the sunrise cover's sun #F7C15C becomes the line's #F9D085.)
+     */
+    fun walkedLine(): Int = mix(vivid, WHITE, 0.25f)
 
     /** The square that stands in for a missing cover: light, dominant, dark, from the top-left corner. */
     fun coverLight(): Int = mix(WHITE, dominant, 0.86f)

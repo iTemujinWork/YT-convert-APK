@@ -115,8 +115,8 @@ class ScreenshotTest {
         }.asImageBitmap()
 
     /** The sheet's sample colours: the sunrise cover (nappal) and the violet one (este). */
-    private val sunrise = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF9D085.toInt())
-    private val violet = SongPalette(dominant = 0xFF543476.toInt(), vivid = 0xFFD9A3F0.toInt())
+    private val sunrise = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF7C15C.toInt())
+    private val violet = SongPalette(dominant = 0xFF543476.toInt(), vivid = 0xFFD68BE8.toInt())
 
     private fun player(name: String, cover: ImageBitmap?, artist: String? = "Kóbor Lámpás", playing: Boolean = true, palette: SongPalette = sunrise, evening: Boolean = false, title: String = "Hajnali vonat") = shot(name) {
         PlayerScreen(

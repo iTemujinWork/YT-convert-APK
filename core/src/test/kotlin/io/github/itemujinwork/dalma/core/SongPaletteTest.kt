@@ -27,12 +27,13 @@ class SongPaletteTest {
 
     @Test
     fun theSheetsMixes() {
-        val palette = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF9D085.toInt())
+        // The sunrise cover of the sheet: its sky is the dominant colour, its sun the vivid one.
+        val palette = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF7C15C.toInt())
         // 32 % of the dominant colour in the night, 22 % in the evening.
         assertEquals("#FF49361F", hex(palette.top(evening = false))) // the sheet's "háttér #49361F"
         assertEquals("#FF362D1D", hex(palette.top(evening = true)))
-        // A quarter of the vivid colour in white.
-        assertEquals("#FFFEF3E1", hex(palette.walkedLine()))
+        // The vivid colour with a quarter of white: the sheet's "csík #F9D085", one step of rounding apart.
+        assertEquals("#FFF9D185", hex(palette.walkedLine()))
         assertEquals("#FFCE824A", hex(palette.coverLight()))
         assertEquals("#FF8F5526", hex(palette.coverDark()))
     }
@@ -55,6 +56,6 @@ class SongPaletteTest {
         assertEquals(dark, fixed.dominant)
         assertTrue(SongPalette.luminance(fixed.vivid) - SongPalette.luminance(dark) >= 0.25f)
         // Already apart: untouched.
-        assertEquals(0xFFF9D085.toInt(), SongPalette.readable(0xFFC66E2C.toInt(), 0xFFF9D085.toInt()).vivid)
+        assertEquals(0xFFF7C15C.toInt(), SongPalette.readable(0xFFC66E2C.toInt(), 0xFFF7C15C.toInt()).vivid)
     }
 }
