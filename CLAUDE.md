@@ -70,8 +70,10 @@ hozzá, ami a lejátszóhoz kell.
   a felhasználó a Download mappából telepíti. Apukája telefonján semmi nem fut kérés nélkül.
 - Az R8 kicsinyítő csak a kiadási buildben fut, ezért a műszeres tesztek (`connectedReleaseAndroidTest`)
   a kiadási APK-n futnak; a reflexióval példányosított osztályokhoz keep-szabály kell (`proguard-rules.pro`).
-- A kabalát a `docs/mascot/dalma.svg`-ben rajzold, soha nem a generált Kotlinban; futtasd a
-  `python3 tools/svg2compose.py`-t és nézd meg a `node tools/render-mascot.js` renderét.
+- A kabalát a tervező pózaiban rajzold (`docs/spec/0.2.0/design/dalma/*.svg`, 200×200, az `alap.svg` az alap),
+  soha nem a generált fájlokban: `python3 tools/poses2mascot.py` építi belőlük a rétegezett `docs/mascot/dalma.svg`-t,
+  `python3 tools/check-mascot.py docs/mascot/dalma.svg` ellenőrzi, `tools/svg2compose.py` (a `svgelements` csomag kell
+  hozzá) generálja a `MascotArt.kt`-t és az ikonokat; a Roborazzi-képernyőképek mutatják az eredményt.
 - Commit-üzenetek angolul, a felhasználói szövegek magyarul (alap) és angolul (`values-en`).
 
 ## Kiadás
