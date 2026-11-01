@@ -148,6 +148,8 @@ fun PlayerScreen(
                 deleting = list.deleting,
                 thumbnail = thumbnail,
                 onPick = actions.onPick,
+                onLongPress = onLongPress,
+                onTouch = actions.onTouch,
                 onDeleteRequest = actions.onDeleteRequest,
                 pullToSearch = pullToSearch,
                 modifier = Modifier

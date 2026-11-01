@@ -67,6 +67,17 @@ class Playback private constructor(private val controller: MediaController) {
         if (controller.isPlaying) controller.pause() else controller.play()
     }
 
+    /** Re-queues into [ids] without a hitch: items move around the one that plays, which keeps playing. */
+    fun reorder(ids: List<Long>) {
+        val queue = MutableList(controller.mediaItemCount) { controller.getMediaItemAt(it).mediaId }
+        ids.forEachIndexed { target, id ->
+            val from = queue.indexOf(id.toString())
+            if (from == -1 || from == target || target >= queue.size) return@forEachIndexed
+            controller.moveMediaItem(from, target)
+            queue.add(target, queue.removeAt(from))
+        }
+    }
+
     fun next() = controller.seekToNextMediaItem()
 
     fun previous() = controller.seekToPreviousMediaItem()

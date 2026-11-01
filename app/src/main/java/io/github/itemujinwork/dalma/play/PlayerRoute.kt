@@ -22,6 +22,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.itemujinwork.dalma.core.Shuffle
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
 import io.github.itemujinwork.dalma.data.Song
@@ -30,6 +31,7 @@ import io.github.itemujinwork.dalma.ui.mascot.rememberMascotState
 import io.github.itemujinwork.dalma.ui.rememberSkyState
 import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,9 +57,12 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     DisposableEffect(playback) { onDispose { playback?.release() } }
     val state = playback?.state?.collectAsStateWithLifecycle()?.value ?: PlaybackState()
 
+    // The folder's order, or the one a long press shuffled (the playing song first).
+    var shuffleOrder by remember { mutableStateOf<List<Long>?>(null) }
+    val ordered = remember(songs, shuffleOrder) { shuffleOrder?.let { order -> Shuffle.apply(songs, order) { it.id } } ?: songs }
     var shownIndex by rememberSaveable { mutableIntStateOf(0) }
     val queued = state.songId != null && songs.any { it.id == state.songId }
-    val song = if (queued) songs.first { it.id == state.songId } else songs[shownIndex.coerceIn(0, songs.lastIndex)]
+    val song = if (queued) songs.first { it.id == state.songId } else ordered[shownIndex.coerceIn(0, ordered.lastIndex)]
 
     var position by remember { mutableLongStateOf(0L) }
     LaunchedEffect(playback, queued, state.playing, state.songId) {
@@ -95,9 +100,9 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var deleting by remember { mutableStateOf<Song?>(null) }
-    val rows = remember(songs, query) {
+    val rows = remember(ordered, query) {
         val needle = query.trim()
-        if (needle.isEmpty()) songs else songs.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
+        if (needle.isEmpty()) ordered else ordered.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
     }
     fun closeSearch() {
         searchOpen = false
@@ -115,6 +120,30 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         onFolderChanged()
     }
 
+    // A long press: a buzz, the list, half a second later the rows slide into a new order with
+    // the playing song first, and a second and a half after that the list goes back by itself,
+    // unless a finger has touched it. The next long press brings the folder's order back the same way.
+    val haptic = LocalHapticFeedback.current
+    var touched by remember { mutableStateOf(false) }
+    var shuffling by remember { mutableStateOf<Job?>(null) }
+    fun shuffle() {
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        shuffling?.cancel()
+        shuffling = scope.launch {
+            touched = false
+            listOpen = true
+            delay(500)
+            val next = if (shuffleOrder == null) Shuffle.order(songs.map { it.id }, first = if (queued) state.songId else song.id) else null
+            shuffleOrder = next
+            if (queued) playback?.reorder(next ?: songs.map { it.id })
+            delay(1500)
+            if (!touched) {
+                closeSearch()
+                listOpen = false
+            }
+        }
+    }
+
     val mascot = rememberMascotState()
     val sorryMascot = rememberMascotState()
     val sky = rememberSkyState()
@@ -129,7 +158,6 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         }
     }
     val evening = remember { isPlayerEvening() }
-    val haptic = LocalHapticFeedback.current
     var showAbout by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<AppUpdateCheck.Available?>(null) }
     LaunchedEffect(Unit) { update = AppUpdateCheck.check(context) }
@@ -149,7 +177,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                 closeSearch()
                 listOpen = false
             },
-            onPick = { picked -> playback?.play(songs, songs.indexOf(picked)) },
+            onPick = { picked -> playback?.play(ordered, ordered.indexOf(picked)) },
             onSearchOpen = { searchOpen = true },
             onQueryChange = { query = it },
             onDeleteRequest = { deleting = it },
@@ -167,6 +195,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                 }
             },
             onDeleteCancel = { deleting = null },
+            onTouch = { touched = true },
         ),
         thumbnail = thumbnail,
         sorryMascot = sorryMascot,
@@ -174,18 +203,18 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         evening = evening,
         onTap = {
             val player = playback ?: return@PlayerScreen
-            if (queued) player.playPause() else player.play(songs, songs.indexOf(song))
+            if (queued) player.playPause() else player.play(ordered, ordered.indexOf(song))
         },
         onSwipe = { direction ->
             val player = playback
             if (queued && player != null) {
                 if (direction < 0) player.next() else player.previous()
             } else {
-                shownIndex = (songs.indexOf(song) - direction).coerceIn(0, songs.lastIndex)
+                shownIndex = (ordered.indexOf(song) - direction).coerceIn(0, ordered.lastIndex)
             }
         },
         onSwipeUp = { listOpen = true },
-        onLongPress = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) /* shuffle, step 6 */ },
+        onLongPress = ::shuffle,
         onSeek = { millis ->
             if (queued) {
                 playback?.seekTo(millis)

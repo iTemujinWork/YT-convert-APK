@@ -13,6 +13,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -55,6 +57,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -71,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.Song
+import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.mascot.Mascot
 import io.github.itemujinwork.dalma.ui.mascot.MascotState
 import io.github.itemujinwork.dalma.ui.theme.DalmaColors
@@ -94,7 +98,7 @@ data class ListUi(
     val deleting: Song? = null,
 )
 
-/** What the list can do. */
+/** What the list can do. [onTouch] is any finger on the rows: a shuffled list stays up then. */
 class ListActions(
     val onClose: () -> Unit,
     val onPick: (Song) -> Unit,
@@ -103,6 +107,7 @@ class ListActions(
     val onDeleteRequest: (Song) -> Unit,
     val onDeleteConfirm: (Song) -> Unit,
     val onDeleteCancel: () -> Unit,
+    val onTouch: () -> Unit = {},
 )
 
 /** The chips: "Mind" is on, "+" will make a list (step 7). */
@@ -127,7 +132,10 @@ private fun Chip(text: String, active: Boolean) {
     )
 }
 
-/** The rows, 64 dp each; a swipe to the left slides one aside for deletion. */
+/**
+ * The rows, 64 dp each; a swipe to the left slides one aside for deletion, a long press shuffles.
+ * When the order changes, every row slides to its new place on its own path (400 ms).
+ */
 @Composable
 internal fun SongRows(
     songs: List<Song>,
@@ -135,11 +143,23 @@ internal fun SongRows(
     deleting: Song?,
     thumbnail: @Composable (Song) -> ImageBitmap?,
     onPick: (Song) -> Unit,
+    onLongPress: () -> Unit,
+    onTouch: () -> Unit,
     onDeleteRequest: (Song) -> Unit,
     pullToSearch: NestedScrollConnection,
     modifier: Modifier,
 ) {
-    LazyColumn(modifier.nestedScroll(pullToSearch)) {
+    val reduced = LocalReducedMotion.current
+    LazyColumn(
+        modifier
+            .nestedScroll(pullToSearch)
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    onTouch()
+                }
+            },
+    ) {
         items(songs, key = { it.id }) { song ->
             SongRow(
                 song = song,
@@ -147,21 +167,23 @@ internal fun SongRows(
                 current = song.id == currentId,
                 aside = deleting?.id == song.id,
                 onPick = { onPick(song) },
+                onLongPress = onLongPress,
                 onDeleteRequest = { onDeleteRequest(song) },
+                modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = if (reduced) null else tween(400, easing = DalmaEase)),
             )
         }
     }
 }
 
 @Composable
-private fun SongRow(song: Song, thumb: ImageBitmap?, current: Boolean, aside: Boolean, onPick: () -> Unit, onDeleteRequest: () -> Unit) {
+private fun SongRow(song: Song, thumb: ImageBitmap?, current: Boolean, aside: Boolean, onPick: () -> Unit, onLongPress: () -> Unit, onDeleteRequest: () -> Unit, modifier: Modifier = Modifier) {
     val asidePx = with(LocalDensity.current) { ASIDE.toPx() }
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(aside) { offset.animateTo(if (aside) -asidePx else 0f, tween(300, easing = DalmaEase)) }
     Row(
         verticalAlignment = Alignment.Top,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(64.dp)
             .offset { IntOffset(offset.value.roundToInt(), 0) }
@@ -177,7 +199,7 @@ private fun SongRow(song: Song, thumb: ImageBitmap?, current: Boolean, aside: Bo
                     onDragCancel = { scope.launch { offset.animateTo(0f, tween(300, easing = DalmaEase)) } },
                 )
             }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onPick),
+            .pointerInput(song.id) { detectTapGestures(onTap = { onPick() }, onLongPress = { onLongPress() }) },
     ) {
         Thumb(thumb, SongPalette.fromArtist(song.artist), Modifier.size(48.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
