@@ -40,9 +40,6 @@
     <string name="about_engine_unknown">Letöltőmotor: yt-dlp</string>
     <string name="about_update">Van újabb Dalma.</string>
     <string name="about_how">YouTube-ban: Megosztás → Dalma.</string>
-    <!-- Only after a failed save; a tap shares the hidden log. -->
-    <string name="about_last_failure">Legutóbb nem sikerült: %1$s</string>
-    <string name="about_log_title">Dalma naplója</string>
     <string name="about_licenses">Licencek</string>
     <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
     <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>
