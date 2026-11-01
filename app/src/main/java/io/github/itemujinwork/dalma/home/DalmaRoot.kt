@@ -30,12 +30,13 @@ fun DalmaRoot() {
     val folder = remember { MusicFolder(context) }
     val scope = rememberCoroutineScope()
     var songs by remember { mutableStateOf<List<Song>?>(null) }
+    val reread: () -> Unit = { scope.launch { songs = withContext(Dispatchers.IO) { folder.read() } } }
     LifecycleResumeEffect(Unit) {
         val reading = scope.launch { songs = withContext(Dispatchers.IO) { folder.read() } }
         onPauseOrDispose { reading.cancel() }
     }
     when (val list = songs) {
         null -> Box(Modifier.fillMaxSize().background(DalmaColors.Night))
-        else -> if (list.isEmpty()) HomeScreen() else PlayerRoute(list)
+        else -> if (list.isEmpty()) HomeScreen() else PlayerRoute(list, onFolderChanged = reread)
     }
 }

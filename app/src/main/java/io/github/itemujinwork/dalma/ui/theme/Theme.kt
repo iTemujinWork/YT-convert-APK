@@ -57,6 +57,7 @@ val Fraunces: FontFamily = FontFamily(
 val Nunito: FontFamily = FontFamily(
     Font(R.font.nunito, weight = FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
     Font(R.font.nunito, weight = FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.nunito, weight = FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
 )
 
 private val colorScheme = darkColorScheme(

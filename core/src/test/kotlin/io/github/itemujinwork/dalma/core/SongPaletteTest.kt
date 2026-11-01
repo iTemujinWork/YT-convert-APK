@@ -32,6 +32,8 @@ class SongPaletteTest {
         // 32 % of the dominant colour in the night, 22 % in the evening.
         assertEquals("#FF49361F", hex(palette.top(evening = false))) // the sheet's "háttér #49361F"
         assertEquals("#FF362D1D", hex(palette.top(evening = true)))
+        // Behind the list: a tenth.
+        assertEquals("#FF20231B", hex(palette.tint(0.10f)))
         // The vivid colour with a quarter of white: the sheet's "csík #F9D085", one step of rounding apart.
         assertEquals("#FFF9D185", hex(palette.walkedLine()))
         assertEquals("#FFCE824A", hex(palette.coverLight()))

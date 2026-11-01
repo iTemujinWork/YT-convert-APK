@@ -1,5 +1,9 @@
 package io.github.itemujinwork.dalma.play
 
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -9,6 +13,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
@@ -26,6 +31,7 @@ import io.github.itemujinwork.dalma.ui.rememberSkyState
 import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
 
@@ -37,12 +43,14 @@ private class Art(val songId: Long, val cover: ImageBitmap?, val palette: SongPa
 
 /**
  * The player screen tied to the folder and the service. Before anything plays, the newest
- * song is shown and a tap starts it; from then on the screen follows what plays.
+ * song is shown and a tap starts it; from then on the screen follows what plays. The list is
+ * the same screen opened up: rows, a search pulled down, a row swiped away.
  */
 @Composable
-fun PlayerRoute(songs: List<Song>) {
+fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     val context = LocalContext.current
     val folder = remember { MusicFolder(context) }
+    val scope = rememberCoroutineScope()
     val playback by produceState<Playback?>(initialValue = null) { value = Playback.connect(context) }
     DisposableEffect(playback) { onDispose { playback?.release() } }
     val state = playback?.state?.collectAsStateWithLifecycle()?.value ?: PlaybackState()
@@ -70,11 +78,55 @@ fun PlayerRoute(songs: List<Song>) {
     }
     val shownArt = art?.takeIf { it.songId == song.id }
 
+    // Small covers for the rows, read once each.
+    val thumbs = remember { HashMap<Long, ImageBitmap?>() }
+    val thumbnail: @Composable (Song) -> ImageBitmap? = { row ->
+        produceState(thumbs[row.id], row.id) {
+            if (!thumbs.containsKey(row.id)) {
+                val bitmap = withContext(Dispatchers.IO) { folder.cover(row, THUMB_PX)?.asImageBitmap() }
+                thumbs[row.id] = bitmap
+                value = bitmap
+            }
+        }.value
+    }
+
+    // The list: open, searched, and a row on its way out.
+    var listOpen by rememberSaveable { mutableStateOf(false) }
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var deleting by remember { mutableStateOf<Song?>(null) }
+    val rows = remember(songs, query) {
+        val needle = query.trim()
+        if (needle.isEmpty()) songs else songs.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
+    }
+    fun closeSearch() {
+        searchOpen = false
+        query = ""
+    }
+    BackHandler(enabled = listOpen) {
+        when {
+            deleting != null -> deleting = null
+            searchOpen -> closeSearch()
+            else -> listOpen = false
+        }
+    }
+    val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        deleting = null
+        onFolderChanged()
+    }
+
     val mascot = rememberMascotState()
+    val sorryMascot = rememberMascotState()
     val sky = rememberSkyState()
     LaunchedEffect(Unit) {
         mascot.closeness.snapTo(1f)
         mascot.live(sleepy = false)
+    }
+    LaunchedEffect(deleting != null) {
+        if (deleting != null) {
+            sorryMascot.closeness.snapTo(1f)
+            sorryMascot.sorry()
+        }
     }
     val evening = remember { isPlayerEvening() }
     val haptic = LocalHapticFeedback.current
@@ -91,6 +143,34 @@ fun PlayerRoute(songs: List<Song>) {
         durationMillis = state.durationMillis.takeIf { queued && it > 0 } ?: song.durationMillis,
         mascot = mascot,
         sky = sky,
+        list = ListUi(open = listOpen, songs = rows, searchOpen = searchOpen, query = query, deleting = deleting),
+        actions = ListActions(
+            onClose = {
+                closeSearch()
+                listOpen = false
+            },
+            onPick = { picked -> playback?.play(songs, songs.indexOf(picked)) },
+            onSearchOpen = { searchOpen = true },
+            onQueryChange = { query = it },
+            onDeleteRequest = { deleting = it },
+            onDeleteConfirm = { doomed ->
+                scope.launch {
+                    when (val removal = withContext(Dispatchers.IO) { folder.remove(doomed) }) {
+                        MusicFolder.Removal.Removed -> {
+                            deleting = null
+                            thumbs.remove(doomed.id)
+                            onFolderChanged()
+                        }
+                        is MusicFolder.Removal.NeedsConsent -> consent.launch(IntentSenderRequest.Builder(removal.intentSender).build())
+                        MusicFolder.Removal.Failed -> deleting = null
+                    }
+                }
+            },
+            onDeleteCancel = { deleting = null },
+        ),
+        thumbnail = thumbnail,
+        sorryMascot = sorryMascot,
+        currentId = state.songId.takeIf { queued },
         evening = evening,
         onTap = {
             val player = playback ?: return@PlayerScreen
@@ -104,7 +184,7 @@ fun PlayerRoute(songs: List<Song>) {
                 shownIndex = (songs.indexOf(song) - direction).coerceIn(0, songs.lastIndex)
             }
         },
-        onSwipeUp = { /* the list, step 5 */ },
+        onSwipeUp = { listOpen = true },
         onLongPress = { haptic.performHapticFeedback(HapticFeedbackType.LongPress) /* shuffle, step 6 */ },
         onSeek = { millis ->
             if (queued) {
@@ -120,5 +200,6 @@ fun PlayerRoute(songs: List<Song>) {
     if (showAbout) AboutCard(update = update, onDismiss = { showAbout = false })
 }
 
-/** Covers are drawn at 330 dp; this is plenty on a 3x screen. */
+/** Covers are drawn at 330 dp and 48 dp; these are plenty on a 3x screen. */
 private const val COVER_PX = 990
+private const val THUMB_PX = 144

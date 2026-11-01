@@ -10,7 +10,10 @@ import kotlin.math.roundToInt
  */
 data class SongPalette(val dominant: Int, val vivid: Int) {
     /** The top of the background: a little of the dominant colour in the night, less in the evening. */
-    fun top(evening: Boolean): Int = mix(NIGHT, dominant, if (evening) 0.22f else 0.32f)
+    fun top(evening: Boolean): Int = tint(if (evening) 0.22f else 0.32f)
+
+    /** [amount] of the dominant colour in the night: 0.32 behind the cover, 0.10 behind the list. */
+    fun tint(amount: Float): Int = mix(NIGHT, dominant, amount)
 
     /**
      * The walked part of the line: the vivid colour lightened with a quarter of white. (The

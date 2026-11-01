@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
@@ -33,6 +34,15 @@ class Playback private constructor(private val controller: MediaController) {
     init {
         controller.addListener(object : Player.Listener {
             override fun onEvents(player: Player, events: Player.Events) = refresh()
+
+            /** A file that vanished or cannot be read: the next song, not a stop. */
+            override fun onPlayerError(error: PlaybackException) {
+                if (controller.hasNextMediaItem()) {
+                    controller.seekToNextMediaItem()
+                    controller.prepare()
+                    controller.play()
+                }
+            }
         })
         refresh()
     }

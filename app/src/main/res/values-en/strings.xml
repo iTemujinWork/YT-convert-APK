@@ -37,6 +37,9 @@
     <string name="about_update">A newer Dalma is out.</string>
     <string name="about_how">In YouTube: Share → Dalma.</string>
     <string name="unknown_artist">Unknown artist</string>
+    <string name="list_all">All</string>
+    <string name="delete_question">Delete it?</string>
+    <string name="delete_yes">Yes</string>
     <string name="about_licenses">Licenses</string>
     <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
     <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>

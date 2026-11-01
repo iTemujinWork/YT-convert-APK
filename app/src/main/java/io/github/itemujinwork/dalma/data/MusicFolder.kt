@@ -1,8 +1,11 @@
 package io.github.itemujinwork.dalma.data
 
+import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.content.Context
+import android.content.IntentSender
 import android.database.Cursor
+import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -39,6 +42,30 @@ class MusicFolder(context: Context) {
         } ?: emptyList()
     } catch (_: Exception) {
         emptyList()
+    }
+
+    /** What happened to a song Dalma was asked to let go of. */
+    sealed interface Removal {
+        data object Removed : Removal
+
+        /** A file someone else put there: Android asks the person itself before it goes. */
+        class NeedsConsent(val intentSender: IntentSender) : Removal
+
+        data object Failed : Removal
+    }
+
+    /** Deletes the file through MediaStore; Dalma's own files go at once, others only with Android's consent. */
+    fun remove(song: Song): Removal = try {
+        if (resolver.delete(song.uri, null, null) > 0) Removal.Removed else Removal.Failed
+    } catch (e: SecurityException) {
+        val sender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            MediaStore.createDeleteRequest(resolver, listOf(song.uri)).intentSender
+        } else {
+            (e as? RecoverableSecurityException)?.userAction?.actionIntent?.intentSender
+        }
+        if (sender != null) Removal.NeedsConsent(sender) else Removal.Failed
+    } catch (_: Exception) {
+        Removal.Failed
     }
 
     /** The cover inside the file, about [sizePx] square, or `null` when there is none. */

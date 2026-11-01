@@ -27,6 +27,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.Song
+import io.github.itemujinwork.dalma.play.ListActions
+import io.github.itemujinwork.dalma.play.ListUi
 import io.github.itemujinwork.dalma.play.PlayerScreen
 import io.github.itemujinwork.dalma.share.ShareSheetContent
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
@@ -118,7 +120,36 @@ class ScreenshotTest {
     private val sunrise = SongPalette(dominant = 0xFFC66E2C.toInt(), vivid = 0xFFF7C15C.toInt())
     private val violet = SongPalette(dominant = 0xFF543476.toInt(), vivid = 0xFFD68BE8.toInt())
 
-    private fun player(name: String, cover: ImageBitmap?, artist: String? = "Kóbor Lámpás", playing: Boolean = true, palette: SongPalette = sunrise, evening: Boolean = false, title: String = "Hajnali vonat") = shot(name) {
+    private val noActions = ListActions(onClose = {}, onPick = {}, onSearchOpen = {}, onQueryChange = {}, onDeleteRequest = {}, onDeleteConfirm = {}, onDeleteCancel = {})
+
+    /** The mock-up's eight songs; every third has no cover. */
+    private val sampleSongs = listOf(
+        "Hajnali vonat" to "Kóbor Lámpás", "Negyedik emelet" to "Ibolya", "Tengerszem" to "Fenyő & Szél", "Két szó" to "Kóbor Lámpás",
+        "Csendes part" to "Fenyő & Szél", "Lámpaoltás" to "Ibolya", "Üres peron" to "Kóbor Lámpás", "Esti villamos" to null,
+    ).mapIndexed { i, (title, artist) ->
+        Song(id = (i + 1).toLong(), uri = "content://media/external_primary/audio/media/${i + 1}".toUri(), fileName = "$title.opus", title = title, artist = artist, durationMillis = 200_000L + i * 7_000, addedAtSeconds = 0)
+    }
+
+    private val sampleThumbs: Map<Long, ImageBitmap> by lazy {
+        mapOf(
+            1L to fakeCover(), 2L to fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()),
+            3L to fakeCover(0xFF225480.toInt(), 0xFF102A40.toInt(), 0xFF9AD3EE.toInt()), 4L to fakeCover(),
+            5L to fakeCover(0xFF225480.toInt(), 0xFF102A40.toInt(), 0xFF9AD3EE.toInt()), 6L to fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()),
+            7L to fakeCover(),
+        )
+    }
+
+    private fun player(
+        name: String,
+        cover: ImageBitmap?,
+        artist: String? = "Kóbor Lámpás",
+        playing: Boolean = true,
+        palette: SongPalette = sunrise,
+        evening: Boolean = false,
+        title: String = "Hajnali vonat",
+        list: ListUi = ListUi(),
+        sorry: MascotState = mascot(),
+    ) = shot(name) {
         PlayerScreen(
             song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "$title.opus", title = title, artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
             cover = cover,
@@ -129,6 +160,11 @@ class ScreenshotTest {
             durationMillis = 235_000,
             mascot = mascot(),
             sky = SkyState(),
+            list = list,
+            actions = noActions,
+            thumbnail = { song -> sampleThumbs[song.id] },
+            sorryMascot = sorry,
+            currentId = if (playing) 1 else null,
             onTap = {},
             onSwipe = {},
             onSwipeUp = {},
@@ -137,6 +173,20 @@ class ScreenshotTest {
             onMascotLongPress = {},
         )
     }
+
+    @Test
+    fun list_rows() = player("list_rows", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs))
+
+    @Test
+    fun list_search() = player("list_search", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, searchOpen = true))
+
+    @Test
+    fun list_delete() = player(
+        "list_delete",
+        cover = fakeCover(),
+        list = ListUi(open = true, songs = sampleSongs, deleting = sampleSongs[2]),
+        sorry = mascot { setExpression(Expression.SORRY); drop.snapTo(1f) },
+    )
 
     @Test
     fun player_playing() = player("player_playing", cover = fakeCover())
