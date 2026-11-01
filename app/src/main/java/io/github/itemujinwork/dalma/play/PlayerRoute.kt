@@ -41,6 +41,19 @@ import java.time.LocalTime
 /** The player's evening, 20:00–06:00: less colour in the sky (Dalma's night mood comes in step 9). */
 fun isPlayerEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 20 || now.hour < 6
 
+/**
+ * Something made once for the screen and let go when the screen goes: the player's controller.
+ * The effect holds the value it was made for; reading it from the state inside onDispose would
+ * release the controller the moment it arrives, and every tap after that is ignored.
+ */
+@Composable
+internal fun <T : Any> rememberForScreen(make: suspend () -> T?, release: (T) -> Unit): T? {
+    val made by produceState<T?>(initialValue = null) { value = make() }
+    val held = made
+    DisposableEffect(held) { onDispose { held?.let(release) } }
+    return held
+}
+
 /** The cover and the colours of one song, loaded together so they arrive together. */
 private class Art(val songId: Long, val cover: ImageBitmap?, val palette: SongPalette)
 
@@ -54,8 +67,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     val context = LocalContext.current
     val folder = remember { MusicFolder(context) }
     val scope = rememberCoroutineScope()
-    val playback by produceState<Playback?>(initialValue = null) { value = Playback.connect(context) }
-    DisposableEffect(playback) { onDispose { playback?.release() } }
+    val playback = rememberForScreen(make = { Playback.connect(context) }, release = Playback::release)
     val state = playback?.state?.collectAsStateWithLifecycle()?.value ?: PlaybackState()
 
     // The folder's order, or the one a long press shuffled (the playing song first).
