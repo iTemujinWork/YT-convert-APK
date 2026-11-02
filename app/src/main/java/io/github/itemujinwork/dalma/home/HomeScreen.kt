@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.R
+import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.ui.Sky
 import io.github.itemujinwork.dalma.ui.mascot.Mascot
 import io.github.itemujinwork.dalma.ui.mascot.rememberMascotState
@@ -37,26 +38,33 @@ import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.delay
 import java.time.LocalTime
 
-/** Late in the evening Dalma still says hello, then gets sleepy; this follows the clock, not dark mode. */
-fun isLateEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 22 || now.hour < 6
+/** The brief's evening, 20:00–06:00: Dalma wakes from the wall instead of winking, and listens with closed eyes. It follows the clock, not dark mode. */
+fun isLateEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 20 || now.hour < 6
 
 @Composable
 fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: Boolean = true) {
     val context = LocalContext.current
-    val mascot = rememberMascotState()
+    val mascot = rememberMascotState(arriving = true)
     val sky = rememberSkyState()
     val haptic = LocalHapticFeedback.current
     var showAbout by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<AppUpdateCheck.Available?>(null) }
 
     LaunchedEffect(checkForUpdates) { if (checkForUpdates) update = AppUpdateCheck.check(context) }
+    // The opening, to the sheet's clock: she appears (0–600), greets (800–2000) — by day with the
+    // wink, at night by straightening up from the wall — and with no music that is all. Late at
+    // night, with nothing to play, she leans back on the wall and sleeps.
     LaunchedEffect(sleepy) {
+        if (sleepy) mascot.sleepAtWallStill()
         mascot.arrive()
         if (!mascot.reducedMotion) {
-            delay(120)
-            mascot.greet() // the wink needs open eyes, so it comes before the sleepy face
+            delay((StartTimeline.greet.startMillis - StartTimeline.appear.endMillis).toLong())
+            if (sleepy) mascot.wakeUp() else mascot.greet()
         }
-        if (sleepy) mascot.sleepy()
+        if (sleepy) {
+            if (!mascot.reducedMotion) delay(StartTimeline.air.durationMillis.toLong())
+            mascot.sleepAtWall()
+        }
         mascot.live(sleepy)
     }
 
@@ -89,8 +97,7 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
             state = mascot,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .fillMaxWidth(0.86f)
-                .aspectRatio(1f),
+                .requiredSize(StartTimeline.BIG_DP.dp),
             contentDescription = stringResource(R.string.cd_dalma),
         )
     }

@@ -20,12 +20,14 @@ import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -45,6 +47,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -56,9 +60,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import io.github.itemujinwork.dalma.R
 import io.github.itemujinwork.dalma.core.SongPalette
+import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.TimeText
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
@@ -69,6 +75,20 @@ import io.github.itemujinwork.dalma.ui.mascot.MascotState
 import io.github.itemujinwork.dalma.ui.theme.DalmaColors
 import io.github.itemujinwork.dalma.ui.theme.Fraunces
 import io.github.itemujinwork.dalma.ui.theme.Nunito
+
+/** Where the opening is, 0..1 each; all 1 once the player is in (the default, for screenshots and after). */
+data class IntroUi(
+    /** Dalma from 440 dp centred to 190 dp in the bottom-left corner, scaling about that corner. */
+    val figure: Float = 1f,
+    /** The sky taking the song's colour. */
+    val sky: Float = 1f,
+    /** The cover: 0 → 1 opacity, 0.92 → 1 scale. */
+    val cover: Float = 1f,
+    /** Title and artist: 0 → 1, rising 8 dp. */
+    val texts: Float = 1f,
+    /** The line drawing itself from left to right. */
+    val line: Float = 1f,
+)
 
 /**
  * "Most szól" and its list mode, one screen in two layouts, laid out in the dp of the 390 × 844
@@ -102,6 +122,7 @@ fun PlayerScreen(
     currentId: Long? = null,
     /** 20:00–06:00: less of the song's colour in the sky. */
     evening: Boolean = false,
+    intro: IntroUi = IntroUi(),
 ) {
     val reduced = LocalReducedMotion.current
     val transition = updateTransition(list.open, label = "list")
@@ -124,17 +145,19 @@ fun PlayerScreen(
     val pullToSearch = rememberPullToSearch(enabled = list.open && !list.searchOpen, pull = pull, onOpen = actions.onSearchOpen)
     val shift = searchShift + with(LocalDensity.current) { pull.value.toDp() }
 
-    val top by animateColorAsState(Color(palette.tint(if (list.open) 0.10f else if (evening) 0.22f else 0.32f)), tween(COLOR_FADE_MILLIS), label = "top")
+    val songTop by animateColorAsState(Color(palette.tint(if (list.open) 0.10f else if (evening) 0.22f else 0.32f)), tween(COLOR_FADE_MILLIS), label = "top")
+    val top = lerp(DalmaColors.Night, songTop, intro.sky)
     val walked by animateColorAsState(Color(palette.walkedLine()), tween(COLOR_FADE_MILLIS), label = "walked")
     val coverLight by animateColorAsState(Color(palette.coverLight()), tween(COLOR_FADE_MILLIS), label = "coverLight")
     val coverMid by animateColorAsState(Color(palette.dominant), tween(COLOR_FADE_MILLIS), label = "coverMid")
     val coverDark by animateColorAsState(Color(palette.coverDark()), tween(COLOR_FADE_MILLIS), label = "coverDark")
 
-    Box(
+    BoxWithConstraints(
         modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(0f to top, fadeStop to DalmaColors.Night, 1f to DalmaColors.Night)),
     ) {
+        val screenWidth = maxWidth
         // Underneath everything: the line, Dalma and the list catch their own touches, the rest falls through here.
         Box(Modifier.fillMaxSize().songGestures(onTap, onSwipe, onSwipeUp, onLongPress))
         Sky(Modifier.fillMaxSize(), state = sky, ambientShootingStars = true)
@@ -192,17 +215,23 @@ fun PlayerScreen(
             modifier = Modifier
                 .offset { IntOffset(coverX.roundToPx(), (coverY + if (list.open) shift else 0.dp).roundToPx()) }
                 .size(coverSize)
+                .graphicsLayer {
+                    alpha = intro.cover
+                    scaleX = 0.92f + 0.08f * intro.cover
+                    scaleY = scaleX
+                }
                 .then(if (list.open) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = actions.onClose) else Modifier),
         )
 
         if (bigAlpha > 0f) {
+            val rise = 8.dp * (1f - intro.texts)
             Text(
                 text = song.title,
                 style = Title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.offset(y = 522.dp).fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha),
+                modifier = Modifier.offset { IntOffset(0, (522.dp + rise).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
             )
             Text(
                 text = song.artist ?: stringResource(R.string.unknown_artist),
@@ -210,7 +239,7 @@ fun PlayerScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.offset(y = 556.dp).fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha),
+                modifier = Modifier.offset { IntOffset(0, (556.dp + rise).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
             )
         }
 
@@ -218,17 +247,21 @@ fun PlayerScreen(
             positionMillis = positionMillis,
             durationMillis = durationMillis,
             walked = walked,
+            drawn = intro.line,
             onSeek = onSeek,
             modifier = Modifier.offset { IntOffset(0, (lineY - (TOUCH_BAND / 2).dp).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp),
         )
 
         if (bigAlpha > 0f) {
+            // The opening: from 440 dp centred (as on the empty screen) to 190 dp in the corner, about the bottom-left.
+            val figureSize = lerp(StartTimeline.BIG_DP.dp, StartTimeline.SMALL_DP.dp, intro.figure)
+            val figureLeft = lerp((screenWidth - StartTimeline.BIG_DP.dp) / 2, (-6).dp, intro.figure)
             Mascot(
                 state = mascot,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .offset(x = (-6).dp)
-                    .size(190.dp)
+                    .offset { IntOffset(figureLeft.roundToPx(), 0) }
+                    .requiredSize(figureSize)
                     .alpha(bigAlpha)
                     .then(if (list.open) Modifier else Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { onMascotLongPress() }) }),
                 contentDescription = stringResource(R.string.cd_dalma),
@@ -258,7 +291,7 @@ private fun Cover(cover: ImageBitmap?, light: Color, mid: Color, dark: Color, co
  * the seek itself happens when the finger lifts.
  */
 @Composable
-private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, onSeek: (Long) -> Unit, modifier: Modifier) {
+private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, drawn: Float, onSeek: (Long) -> Unit, modifier: Modifier) {
     var touch by remember { mutableStateOf<Float?>(null) }
     val fraction = touch ?: if (durationMillis > 0) (positionMillis.toFloat() / durationMillis).coerceIn(0f, 1f) else 0f
     val shown = touch?.let { (it * durationMillis).toLong() } ?: positionMillis
@@ -283,8 +316,9 @@ private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, 
     ) {
         Canvas(Modifier.align(Alignment.TopCenter).offset(y = (TOUCH_BAND / 2 - 1).dp).fillMaxWidth().height(2.dp)) {
             val corner = CornerRadius(1.dp.toPx())
-            drawRoundRect(color = DalmaColors.DeepTeal, cornerRadius = corner)
-            drawRoundRect(color = walked, size = Size(size.width * fraction, size.height), cornerRadius = corner)
+            // At the opening the line draws itself from the left; drawn = 1 afterwards.
+            drawRoundRect(color = DalmaColors.DeepTeal, size = Size(size.width * drawn, size.height), cornerRadius = corner)
+            drawRoundRect(color = walked, size = Size(size.width * fraction * drawn, size.height), cornerRadius = corner)
         }
         if (touch != null) {
             Row(

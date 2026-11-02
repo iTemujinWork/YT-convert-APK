@@ -21,13 +21,19 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import kotlinx.coroutines.coroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.itemujinwork.dalma.core.Shuffle
+import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.data.SongList
 import io.github.itemujinwork.dalma.home.AboutCard
+import io.github.itemujinwork.dalma.home.isLateEvening
+import io.github.itemujinwork.dalma.ui.mascot.Expression
 import io.github.itemujinwork.dalma.ui.mascot.rememberMascotState
 import io.github.itemujinwork.dalma.ui.rememberSkyState
 import io.github.itemujinwork.dalma.update.AppUpdateCheck
@@ -36,10 +42,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.time.LocalTime
-
-/** The player's evening, 20:00–06:00: less colour in the sky (Dalma's night mood comes in step 9). */
-fun isPlayerEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 20 || now.hour < 6
 
 /**
  * Something made once for the screen and let go when the screen goes: the player's controller.
@@ -164,12 +166,38 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         }
     }
 
-    val mascot = rememberMascotState()
+    val mascot = rememberMascotState(arriving = true)
     val sorryMascot = rememberMascotState()
     val sky = rememberSkyState()
+    val evening = remember { isLateEvening() }
+
+    // The opening, to the sheet's clock: Dalma big, the greeting, a second of air, then into the
+    // corner while the sky, the cover, the texts and the line come in one after the other, and in
+    // the corner the greeting figure becomes the listening one (eyes closed at night).
+    val intro = remember { Intro() }
     LaunchedEffect(Unit) {
-        mascot.closeness.snapTo(1f)
-        mascot.live(sleepy = false)
+        if (mascot.reducedMotion) {
+            intro.finish()
+            mascot.closeness.snapTo(1f)
+            if (evening) mascot.setExpression(Expression.NIGHT)
+            mascot.live(sleepy = evening)
+            return@LaunchedEffect
+        }
+        if (evening) mascot.sleepAtWallStill()
+        mascot.arrive()
+        delay((StartTimeline.greet.startMillis - StartTimeline.appear.endMillis).toLong())
+        if (evening) mascot.wakeUp() else mascot.greet()
+        delay(StartTimeline.air.durationMillis.toLong())
+        val t0 = StartTimeline.corner.startMillis
+        coroutineScope {
+            launch { intro.figure.animateTo(1f, tween(StartTimeline.corner.durationMillis, easing = DalmaEase)) }
+            launch { intro.sky.animateTo(1f, tween(StartTimeline.corner.durationMillis, easing = DalmaEase)) }
+            launch { delay((StartTimeline.cover.startMillis - t0).toLong()); intro.cover.animateTo(1f, tween(StartTimeline.cover.durationMillis, easing = DalmaEase)) }
+            launch { delay((StartTimeline.texts.startMillis - t0).toLong()); intro.texts.animateTo(1f, tween(StartTimeline.texts.durationMillis, easing = DalmaEase)) }
+            launch { delay((StartTimeline.line.startMillis - t0).toLong()); intro.line.animateTo(1f, tween(StartTimeline.line.durationMillis, easing = DalmaEase)) }
+            launch { delay((StartTimeline.listen.startMillis - t0).toLong()); if (evening) mascot.setExpression(Expression.NIGHT, StartTimeline.listen.durationMillis) }
+        }
+        mascot.live(sleepy = evening)
     }
     LaunchedEffect(deleting != null) {
         if (deleting != null) {
@@ -177,7 +205,6 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
             sorryMascot.sorry()
         }
     }
-    val evening = remember { isPlayerEvening() }
     var showAbout by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<AppUpdateCheck.Available?>(null) }
     LaunchedEffect(Unit) { update = AppUpdateCheck.check(context) }
@@ -223,6 +250,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         sorryMascot = sorryMascot,
         currentId = state.songId.takeIf { queued },
         evening = evening,
+        intro = IntroUi(intro.figure.value, intro.sky.value, intro.cover.value, intro.texts.value, intro.line.value),
         onTap = {
             val player = playback ?: return@PlayerScreen
             if (queued) player.playPause() else player.play(ordered, ordered.indexOf(song))
@@ -249,6 +277,19 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         },
     )
     if (showAbout) AboutCard(update = update, onDismiss = { showAbout = false })
+}
+
+/** The opening's five movements, 0 → 1 each. */
+private class Intro {
+    val figure = Animatable(0f)
+    val sky = Animatable(0f)
+    val cover = Animatable(0f)
+    val texts = Animatable(0f)
+    val line = Animatable(0f)
+
+    suspend fun finish() {
+        for (part in listOf(figure, sky, cover, texts, line)) part.snapTo(1f)
+    }
 }
 
 /** Covers are drawn at 330 dp and 48 dp; these are plenty on a 3x screen. */
