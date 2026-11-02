@@ -102,6 +102,12 @@ class ScreenshotTest {
     @Test
     fun home_sleepy() = shot("home_sleepy") { HomeScreen(sleepy = true, checkForUpdates = false) }
 
+    @Test
+    fun mascot_asleep_at_wall() = sheet("mascot_asleep_at_wall", mascot { sleepAtWallStill() })
+
+    @Test
+    fun mascot_night() = sheet("mascot_night", mascot { setExpression(Expression.NIGHT) })
+
     // --- The player ("Most szól"), with the sheet's sample song ---
 
     /** A cover like the mock-up's: a sky, a sun, a dark ground. */
@@ -219,7 +225,7 @@ class ScreenshotTest {
     fun sheet_private() = sheet("sheet_private", mascot { setExpression(Expression.SORRY); drop.snapTo(1f); tilt.snapTo(5f) }, sentence = text(R.string.private_video))
 
     @Test
-    fun mascot_wink() = sheet("mascot_wink", mascot { nod.snapTo(7f); greetStill() })
+    fun mascot_wink() = sheet("mascot_wink", mascot { greetStill() })
 
     @Test
     fun mascot_blink() = sheet("mascot_blink", mascot { blinkStill(2) })

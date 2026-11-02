@@ -24,7 +24,8 @@ ORDER = [
     "mouth_smile", "mouth_happy", "mouth_sorry", "mouth_sleepy",
     "eye_l_open", "eye_l_closed", "eye_l_happy", "eye_l_sleepy",
     "eye_r_open", "eye_r_closed", "eye_r_happy", "eye_r_sleepy",
-    "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry", "brow_l_wink", "brow_r_wink", "eye_l_wink",
+    "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry", "brow_l_wink", "brow_r_wink", "brow_l_asleep", "brow_r_asleep",
+    "eye_l_wink", "eye_r_wink", "mouth_night", "mouth_asleep",
     "hair_front", "clip", "drop", "sparkles", "zz",
 ]
 
@@ -77,8 +78,13 @@ def fmt(v):
     return f"{v:.2f}".rstrip("0").rstrip(".")
 
 
+POSE_ROTATIONS = {"alszik-fal.svg": ("rotate(-9 60 200)", "rotate(-10 100 136)")}
+
+
 def shapes_of(path):
-    """Every drawable shape of a pose file in document order, with its transform baked in."""
+    """Every drawable shape of a pose file in document order, with its transform baked in
+    (except a pose's own lean, which the app animates itself)."""
+    skipped = POSE_ROTATIONS.get(os.path.basename(path), ())
     root = ET.parse(path).getroot()
     out = []
     counter = [0]
@@ -92,7 +98,8 @@ def shapes_of(path):
                 gid = group
                 if gid is None:
                     gid = counter[0]; counter[0] += 1
-                walk(child, matrix(child.get("transform")) if child.get("transform") else m, gid)
+                t = child.get("transform")
+                walk(child, matrix(t) if t and t not in skipped else m, gid)
                 continue
             clipped = child.get("clip-path") is not None  # the fringe's shadow, clipped to the face in the file
             attrs = {k: child.get(k) for k in KEEP if child.get(k) is not None}
@@ -209,9 +216,10 @@ def base_layers(shapes):
 VARIANTS = {
     "orul.svg": ("happy", "sparkles"),
     "almos.svg": ("sleepy", "zz"),
-    "hallgat-este.svg": ("closed", None),
     "bocsanat.svg": ("sorry", "drop"),
     "kacsint.svg": ("wink", None),
+    "hallgat-este.svg": ("night", None),
+    "alszik-fal.svg": ("asleep", None),
 }
 
 
@@ -224,12 +232,13 @@ def add_variants(layers, base_keys):
             if cx < 66 or cx > 134:
                 if afar: layers[afar].append(s)
             elif cy < 86:
-                if mood in ("sorry", "wink"): layers[f"brow_{side(cx)}_{mood}"].append(s)
+                if mood in ("sorry", "wink", "asleep"): layers[f"brow_{side(cx)}_{mood}"].append(s)
             elif cy < 102:
-                if mood in ("happy", "sleepy", "closed"): layers[f"eye_{side(cx)}_{mood}"].append(s)
-                elif mood == "wink" and s["tag"] == "path" and cx < 100: layers["eye_l_wink"].append(s)
+                if mood in ("happy", "sleepy"): layers[f"eye_{side(cx)}_{mood}"].append(s)
+                elif mood == "night": layers[f"eye_{side(cx)}_closed"].append(s)  # the closed eyes of the night
+                elif mood == "wink" and s["tag"] == "path": layers[f"eye_{side(cx)}_wink"].append(s)  # the arc, and the other lid's line
             else:
-                if mood in ("happy", "sorry", "sleepy"): layers[f"mouth_{mood}"].append(s)
+                if mood in ("happy", "sorry", "sleepy", "night", "asleep"): layers[f"mouth_{mood}"].append(s)
     return layers
 
 

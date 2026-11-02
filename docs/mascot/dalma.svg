@@ -89,8 +89,23 @@
   <g id="brow_r_wink">
     <path fill="none" stroke="#4B3832" stroke-width="2.4" stroke-linecap="round" opacity="0.75" d="M 132.45 96.81 Q 141.16 92.61 149.21 97.98"/>
   </g>
+  <g id="brow_l_asleep">
+    <path fill="none" stroke="#4B3832" stroke-width="2.4" stroke-linecap="round" opacity="0.75" d="M 92.4 100.8 Q 100.8 98.4 109.2 100.8"/>
+  </g>
+  <g id="brow_r_asleep">
+    <path fill="none" stroke="#4B3832" stroke-width="2.4" stroke-linecap="round" opacity="0.75" d="M 130.8 100.8 Q 139.2 98.4 147.6 100.8"/>
+  </g>
   <g id="eye_l_wink">
     <path fill="none" stroke="#3A2B26" stroke-width="2.88" stroke-linecap="round" d="M 93.92 114.57 Q 101.52 109.08 108.28 115.57"/>
+  </g>
+  <g id="eye_r_wink">
+    <path fill="none" stroke="#3A2B26" stroke-width="1.92" stroke-linecap="round" d="M 131.61 108.78 Q 140.33 104.58 148.29 111.15"/>
+  </g>
+  <g id="mouth_night">
+    <path fill="none" stroke="#4B3832" stroke-width="2.52" stroke-linecap="round" d="M 110.4 139.2 Q 120 146.4 129.6 139.2"/>
+  </g>
+  <g id="mouth_asleep">
+    <path fill="none" stroke="#4B3832" stroke-width="2.4" stroke-linecap="round" d="M 114 140.4 Q 120 144 126 140.4"/>
   </g>
   <g id="hair_front">
     <path fill="#4B3832" d="M 74.4 120 Q 67.2 52.8 120 50.4 Q 172.8 52.8 165.6 120 Q 165.6 110.4 163.2 103.2 Q 163.2 86.4 148.8 82.8 Q 132 78 120 86.4 Q 110.4 93.6 100.8 90 Q 86.4 85.2 79.2 103.2 Q 76.8 108 74.4 120 Z"/>

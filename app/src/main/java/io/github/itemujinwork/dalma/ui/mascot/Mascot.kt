@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -27,6 +28,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,7 +46,14 @@ private fun variants(expression: Expression): Variants = when (expression) {
     Expression.HAPPY -> Variants("eye_l_happy", "eye_r_happy", "mouth_happy", "brow_l", "brow_r")
     Expression.SORRY -> Variants("eye_l_open", "eye_r_open", "mouth_sorry", "brow_l_sorry", "brow_r_sorry")
     Expression.SLEEPY -> Variants("eye_l_sleepy", "eye_r_sleepy", "mouth_sleepy", "brow_l", "brow_r")
+    // hallgat-este.svg and alszik-fal.svg: closed eyes, and each its own brows and smile.
+    Expression.NIGHT -> Variants("eye_l_closed", "eye_r_closed", "mouth_night", "brow_l_wink", "brow_r_wink")
+    Expression.ASLEEP -> Variants("eye_l_closed", "eye_r_closed", "mouth_asleep", "brow_l_asleep", "brow_r_asleep")
 }
+
+/** The designer's pivots, in the 240 box: the greeting tilts the whole face about kacsint.svg's (100,100); the lean is about the wall's foot. */
+private val GREET_PIVOT = Offset(120f, 120f)
+private val LEAN_PIVOT = Offset(72f, 240f)
 
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
@@ -105,7 +114,7 @@ fun Mascot(
     }
 
     val semanticsModifier = if (contentDescription != null) modifier.semantics { this.contentDescription = contentDescription } else modifier
-    Canvas(semanticsModifier) {
+    Canvas(semanticsModifier.graphicsLayer { alpha = state.presence.value }) {
         @Suppress("UNUSED_VARIABLE") val tick = frame
         val clock = Clock(breath, drift, shine.value)
         val images = state.images
@@ -181,8 +190,9 @@ private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
     val breath = clock.breath
 
     scale(closeness, closeness, pivot = Offset(120f, 240f)) {
-        // The hop stretches her a little going up and squashes her a little landing.
+        // The hop stretches her a little going up and squashes her a little landing; asleep, she leans on the wall.
         withTransform({
+            rotate(state.lean.value, pivot = LEAN_PIVOT)
             translate(0f, hop)
             scale(1f - 0.03f * squash, 1f + 0.045f * squash, pivot = Offset(120f, 240f))
         }) {
@@ -214,30 +224,39 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
         scale(1f, nodSquash, pivot = headPivot)
     }) {
         // Turning three-quarters: the head narrows, the back hair shows a little more, a beat later.
-        scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-            translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
-            drawLayer("head")
-            drawLayer("blush")
+        // The greeting tilts the head; the back hair follows it 100 ms late, the fringe 150 ms late.
+        rotate(state.greetTiltBack.value, pivot = GREET_PIVOT) {
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
+            }
         }
-        // The face slides towards the turn and narrows; a glance moves it a touch too.
-        withTransform({
-            translate(-14f * turn + state.gazeX.value * 1.2f, 1.5f * turn + state.gazeY.value * 0.8f)
-            scale(1f - 0.12f * turn, 1f, pivot = headPivot)
-        }) {
-            drawLayer("nose")
-            drawFace(state)
+        rotate(state.greetTilt.value, pivot = GREET_PIVOT) {
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                drawLayer("head")
+                drawLayer("blush")
+            }
+            // The face slides towards the turn and narrows; a glance moves it a touch too.
+            withTransform({
+                translate(-14f * turn + state.gazeX.value * 1.2f, 1.5f * turn + state.gazeY.value * 0.8f)
+                scale(1f - 0.12f * turn, 1f, pivot = headPivot)
+            }) {
+                drawLayer("nose")
+                drawFace(state)
+            }
         }
-        scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-            translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
-        }
-        // The hair clip comes forward and grows as she turns.
-        val clipCenter = MascotPaths.clipBounds.center
-        withTransform({
-            translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
-            scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
-        }) {
-            drawLayer("clip")
-            state.clipFill?.let { drawClipFill(it, clock.shine) }
+        rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
+            }
+            // The hair clip comes forward and grows as she turns.
+            val clipCenter = MascotPaths.clipBounds.center
+            withTransform({
+                translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
+                scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
+            }) {
+                drawLayer("clip")
+                state.clipFill?.let { drawClipFill(it, clock.shine) }
+            }
         }
     }
 }
@@ -254,11 +273,13 @@ private fun DrawScope.drawExpression(state: MascotState, expression: Expression,
     val v = variants(expression)
     val blink = state.blinkFrame
     val openEyes = expression == Expression.NEUTRAL || expression == Expression.SORRY
-    // The designer's wink (kacsint.svg): the viewer's left eye closes to an arc, both brows lift a touch.
-    val winking = state.wink && openEyes && blink == 0
+    // The designer's wink (kacsint.svg), as motion: the viewer's left eye squashes to a line and its lid's arc
+    // comes out, the other eye narrows a touch under its lid line, and the brows morph into the wink's.
+    val wink = if (expression == Expression.NEUTRAL && blink == 0) state.winkSquash.value else 0f
+    val brows = if (expression == Expression.NEUTRAL) state.browMorph.value else 0f
     drawLayer(v.mouth, alpha)
-    drawLayer(if (winking) "brow_l_wink" else v.browL, alpha)
-    drawLayer(if (winking) "brow_r_wink" else v.browR, alpha)
+    drawMorphedLayer(v.browL, "brow_l_wink", brows, alpha)
+    drawMorphedLayer(v.browR, "brow_r_wink", brows, alpha)
 
     var eyeL = v.eyeL
     var eyeR = v.eyeR
@@ -267,23 +288,32 @@ private fun DrawScope.drawExpression(state: MascotState, expression: Expression,
             1 -> { eyeL = "eye_l_sleepy"; eyeR = "eye_r_sleepy" }
             2 -> { eyeL = "eye_l_closed"; eyeR = "eye_r_closed" }
         }
-        if (winking) eyeL = "eye_l_wink"
     } else if (expression == Expression.SLEEPY && blink == 2) {
         eyeL = "eye_l_closed"
         eyeR = "eye_r_closed"
     }
-    drawEye(eyeL, state, alpha)
-    drawEye(eyeR, state, alpha)
+    drawEye(eyeL, state, alpha, squash = wink)
+    drawEye(eyeR, state, alpha, squash = 0.08f * wink)
+    if (wink > 0f) {
+        drawEye("eye_l_wink", state, alpha * wink)
+        drawEye("eye_r_wink", state, alpha * wink)
+    }
 }
 
-private fun DrawScope.drawEye(layer: String, state: MascotState, alpha: Float) {
-    val gaze = Offset(state.gazeX.value * 2.6f, state.gazeY.value * 1.4f)
-    for (shape in MascotPaths.layer(layer)) {
-        if (shape.isPupil) {
-            translate(gaze.x, gaze.y) { drawShape(shape, alpha) }
-        } else {
-            drawShape(shape, alpha)
-        }
+/**
+ * One eye, moved whole by the glance (2.2 right, 2.4 up at most, the upper lid's line with it,
+ * so the eye never slips out from under the line), and squashed vertically for the wink.
+ */
+private fun DrawScope.drawEye(layer: String, state: MascotState, alpha: Float, squash: Float = 0f) {
+    val shapes = MascotPaths.layer(layer)
+    if (shapes.isEmpty()) return
+    val gaze = Offset(state.gazeX.value * 2.2f, state.gazeY.value * 2.4f)
+    val centre = shapes.map { it.bounds }.reduce { acc, rect -> Rect(minOf(acc.left, rect.left), minOf(acc.top, rect.top), maxOf(acc.right, rect.right), maxOf(acc.bottom, rect.bottom)) }.center
+    withTransform({
+        translate(gaze.x, gaze.y)
+        if (squash > 0f) scale(1f, (1f - squash).coerceAtLeast(0.04f), pivot = centre)
+    }) {
+        for (shape in shapes) drawShape(shape, alpha)
     }
 }
 

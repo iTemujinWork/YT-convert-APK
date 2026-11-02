@@ -23,8 +23,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 
-/** The faces Dalma can make. */
-enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY }
+/** The faces Dalma can make: the last two with closed eyes, listening at night and asleep against the wall. */
+enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY, NIGHT, ASLEEP }
 
 /**
  * Everything that moves on Dalma, plus the little choreographies (greeting, turning,
@@ -34,7 +34,7 @@ enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY }
  * AI-made pictures exist ([images]), the same calls play her clips instead.
  */
 @Stable
-class MascotState internal constructor(val reducedMotion: Boolean, internal val images: MascotImages? = null) {
+class MascotState internal constructor(val reducedMotion: Boolean, internal val images: MascotImages? = null, startHidden: Boolean = false) {
     /** 0 = looking at you, 1 = head turned three-quarters, hair clip towards you. */
     val turn = Animatable(0f)
 
@@ -43,6 +43,23 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     /** Scale of the whole figure: she "comes closer" from 0.94 to 1. */
     val closeness = Animatable(0.94f)
+
+    /** 0..1 opacity of the whole figure: she appears with it (the sheet's 0 → 1 over 600 ms); hidden first where she arrives. */
+    val presence = Animatable(if (startHidden) 0f else 1f)
+
+    /** The whole figure leaning against the wall, in degrees about her bottom-left; negative leans to the viewer's left. */
+    val lean = Animatable(0f)
+
+    /** The greeting's head tilt in degrees (positive towards the viewer's right), and the hair following it late. */
+    val greetTilt = Animatable(0f)
+    val greetTiltBack = Animatable(0f)
+    val greetTiltFront = Animatable(0f)
+
+    /** The left eye closing to a line for the wink: 0 open, 1 a line; the lid's arc shows as it closes. */
+    val winkSquash = Animatable(0f)
+
+    /** 0 the usual brows, 1 the wink's: they morph, they don't switch. */
+    val browMorph = Animatable(0f)
 
     /** Head nod in degrees, positive = chin down. */
     val nod = Animatable(0f)
@@ -77,9 +94,6 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     /** 0 open, 1 half closed, 2 closed. */
     var blinkFrame by mutableIntStateOf(0)
-        private set
-
-    var wink by mutableStateOf(false)
         private set
 
     /** Download progress painted into the hair clip, `null` when idle. */
@@ -142,16 +156,16 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         playing = null
     }
 
-    suspend fun setExpression(next: Expression) {
+    suspend fun setExpression(next: Expression, millis: Int = 200) {
         if (next == expression) return
         previousExpression = expression
         expression = next
         expressionBlend.snapTo(0f)
         coroutineScope {
-            launch { expressionBlend.go(1f, tween(200)) }
+            launch { expressionBlend.go(1f, tween(millis)) }
             launch { sparkles.go(if (next == Expression.HAPPY) 1f else 0f, tween(350)) }
             launch { drop.go(if (next == Expression.SORRY) 1f else 0f, tween(450, easing = LinearOutSlowInEasing)) }
-            launch { zz.go(if (next == Expression.SLEEPY) 1f else 0f, tween(700)) }
+            launch { zz.go(if (next == Expression.SLEEPY || next == Expression.ASLEEP) 1f else 0f, tween(700)) }
             // A sorry face looks down a little; the others look at you.
             launch { gazeY.go(if (next == Expression.SORRY) 0.45f else 0f, tween(400)) }
             if (images != null) {
@@ -161,7 +175,7 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
                             Expression.NEUTRAL -> if (turn.value > 0.5f) "fordul" else "alap"
                             Expression.HAPPY -> "orul"
                             Expression.SORRY -> "bocsanat"
-                            Expression.SLEEPY -> "almos"
+                            Expression.SLEEPY, Expression.NIGHT, Expression.ASLEEP -> "almos"
                         },
                     )
                 }
@@ -169,24 +183,94 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
-    /** She arrives: a touch closer, as if stepping up to the screen, settling softly. */
+    /** She appears: 0 → 1 opacity and 0.96 → 1 scale over 600 ms, as the sheet's opening has it. */
     suspend fun arrive() {
-        closeness.go(1f, spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessLow))
+        if (reducedMotion) {
+            presence.snapTo(1f)
+            closeness.snapTo(1f)
+            return
+        }
+        presence.snapTo(0f)
+        closeness.snapTo(0.96f)
+        coroutineScope {
+            launch { presence.animateTo(1f, tween(600, easing = LinearOutSlowInEasing)) }
+            launch { closeness.animateTo(1f, tween(600, easing = FastOutSlowInEasing)) }
+        }
     }
 
-    /** A small nod and a wink: a tiny lift first, the nod, a soft settle. */
+    /**
+     * The greeting as motion, not two pictures: a breath of anticipation the other way, the head
+     * tilts 4°, the back hair follows 100 ms and the fringe 150 ms later; the left eye squashes
+     * to a line while the brows morph into the wink's; then everything comes back. 1.2 s in all.
+     */
     suspend fun greet() {
         if (reducedMotion) return
         if (play("koszon")) {
             show("alap")
             return
         }
-        nod.animateTo(-2f, tween(110, easing = FastOutSlowInEasing))
-        wink = true
-        nod.animateTo(7f, tween(190, easing = FastOutSlowInEasing))
-        delay(300)
-        nod.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow))
-        wink = false
+        suspend fun Animatable<Float, AnimationVector1D>.tiltAndBack() {
+            animateTo(-1f, tween(100, easing = FastOutSlowInEasing))
+            animateTo(4f, tween(260, easing = FastOutSlowInEasing))
+            delay(420)
+            animateTo(0f, tween(420, easing = FastOutSlowInEasing))
+        }
+        coroutineScope {
+            launch { greetTilt.tiltAndBack() }
+            launch { delay(100); greetTiltBack.tiltAndBack() }
+            launch { delay(150); greetTiltFront.tiltAndBack() }
+            launch {
+                delay(160)
+                coroutineScope {
+                    launch { winkSquash.animateTo(1f, tween(140, easing = FastOutSlowInEasing)) }
+                    launch { browMorph.animateTo(1f, tween(140, easing = FastOutSlowInEasing)) }
+                }
+                delay(500)
+                coroutineScope {
+                    launch { winkSquash.animateTo(0f, tween(180, easing = FastOutSlowInEasing)) }
+                    launch { browMorph.animateTo(0f, tween(220, easing = FastOutSlowInEasing)) }
+                }
+            }
+        }
+    }
+
+    /** Late at night she is found asleep against the wall: leaning, eyes closed, a few z's. */
+    suspend fun sleepAtWall() {
+        coroutineScope {
+            launch { setExpression(Expression.ASLEEP, 600) }
+            launch { lean.go(-9f, tween(900, easing = FastOutSlowInEasing)) }
+            launch { tilt.go(-10f, tween(900, easing = FastOutSlowInEasing)) }
+        }
+    }
+
+    /** The same, at once: where the night's opening starts, and for screenshots. */
+    suspend fun sleepAtWallStill() {
+        lean.snapTo(-9f)
+        tilt.snapTo(-10f)
+        previousExpression = Expression.ASLEEP
+        expression = Expression.ASLEEP
+        expressionBlend.snapTo(1f)
+        zz.snapTo(1f)
+    }
+
+    /** The night's greeting instead of the wink: she straightens up from the wall, eyes half open, a soft smile, then awake. */
+    suspend fun wakeUp() {
+        if (reducedMotion) {
+            lean.snapTo(0f)
+            tilt.snapTo(0f)
+            setExpression(Expression.NEUTRAL)
+            return
+        }
+        coroutineScope {
+            launch { lean.animateTo(0f, tween(800, easing = FastOutSlowInEasing)) }
+            launch { tilt.animateTo(0f, tween(800, easing = FastOutSlowInEasing)) }
+            launch {
+                delay(300)
+                setExpression(Expression.SLEEPY, 250)
+                delay(450)
+                setExpression(Expression.NEUTRAL, 200)
+            }
+        }
     }
 
     /** Eyes close fast and open a little slower, like real ones. */
@@ -201,9 +285,13 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         blinkFrame = 0
     }
 
-    /** Frozen poses for screenshots: a wink, and a blink frame (0 open, 1 half, 2 closed). */
-    fun greetStill() {
-        wink = true
+    /** Frozen poses for screenshots: the wink, and a blink frame (0 open, 1 half, 2 closed). */
+    suspend fun greetStill() {
+        greetTilt.snapTo(4f)
+        greetTiltBack.snapTo(4f)
+        greetTiltFront.snapTo(4f)
+        winkSquash.snapTo(1f)
+        browMorph.snapTo(1f)
     }
 
     fun blinkStill(frame: Int) {
@@ -373,9 +461,10 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
     }
 }
 
+/** [arriving]: she is not there until [MascotState.arrive] fades her in, so the first frame shows no one. */
 @Composable
-fun rememberMascotState(): MascotState {
+fun rememberMascotState(arriving: Boolean = false): MascotState {
     val reduced = LocalReducedMotion.current
     val context = LocalContext.current
-    return remember(reduced) { MascotState(reduced, MascotAssets.load(context)) }
+    return remember(reduced) { MascotState(reduced, MascotAssets.load(context), startHidden = arriving) }
 }
