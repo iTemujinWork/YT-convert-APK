@@ -1,42 +1,48 @@
 # Dalma
 
-Androidos app, amely egy YouTube-videóból **egyetlen koppintással** minőségi zenét ment.
-A YouTube-ban megnyomod a Megosztást, kiválasztod Dalmát, és egy kis lapon ő azonnal munkához lát:
-elfordul, a hajcsatja megtelik, aztán örül, és egy rövid mondattal jelzi, hogy kész.
-Nincs beállítás, nincs gomb, nincs lista. A formátumot, a minőséget és a hibákat az app intézi.
+Androidos app, amely egy YouTube-videóból **egyetlen koppintással** minőségi zenét ment, és le is játssza,
+amit őriz. A YouTube-ban megnyomod a Megosztást, kiválasztod Dalmát, és egy kis lapon ő azonnal munkához lát:
+a hajcsatja megtelik a letöltéssel, aztán örül, és egy rövid mondattal jelzi, hogy kész. Az appot megnyitva
+a `Zene/Dalma` mappa dalai szólnak. Nincs beállítás, nincs gomb, nincs súgó; szöveg csak ott, ahol egy
+mondat kell.
 
 <p align="center"><img src="docs/mascot/moods.png" width="720" alt="Dalma hangulatai"></p>
 
 ## Mit tud
 
 - **Opus, ahogy a YouTube adja** (251-es folyam, kb. 160 kbit/s), átkódolás nélkül; ha egy dalhoz nincs
-  Opus, AAC (`.m4a`). Előadó, cím, album, év és **négyzetes borító** a fájlba írva, hogy a gyári lejátszó
+  Opus, AAC (`.m4a`). Előadó, cím, album, év és **négyzetes borító** a fájlba írva, hogy bármelyik lejátszó
   rendesen mutassa.
 - **A Zene/Dalma mappába ment** (`Előadó – Cím.opus`), tárhely-engedély nélkül, és soha nem ír felül semmit.
+  A mappa az övé, de nem zárt: más app is látja, a fájl bárhova másolható.
 - **Érti a linkeket**: Shorts, youtu.be, YouTube Music, mobillinkek, megosztott szöveg közepén is.
-  Listából megosztott dalnál csak azt az egyet menti, listalinknél az egész listát (legfeljebb 300-at).
+  Listából megosztott dalnál csak azt az egyet menti, listalinknél az egész listát (legfeljebb 300-at), és a
+  végén `.m3u` lista lesz belőle.
 - **Már megvan**: ugyanazt a dalt nem tölti le kétszer, csak annyit mond: *Ez már megvan.*
 - **Háttérben is befejezi**, ha lehúzod a lapot vagy kilépsz; értesítésben megszakítható. Ha nincs net,
   sorba teszi, és magától elindul, amint lesz. Megszakadt letöltést folytat.
 - **Megjavítja magát**: a yt-dlp letöltőmotor naponta frissül, hiba után frissítve, más YouTube-kliensekkel,
   más formátummal, egyszerűbb feldolgozással próbál újra, és csak a végén kér bocsánatot egy mondattal.
-- **Helyellenőrzés** letöltés előtt; érthető mondatok hiba esetén (*Nincs net. Amint lesz, elmentem.*,
-  *Ezt nem érem el, mert privát.*).
-- **Engedélyek**: csak internet és értesítés.
+- **Lejátszó**: a mappa dalai lezárt képernyőn, fülhallgató-gombbal és Bluetoothon is szólnak. Koppintás:
+  szól / megáll; húzás balra-jobbra: következő / előző; a vonal húzása: tekerés; felhúzás: lista-mód; lehúzás:
+  lista és kereső; hosszú nyomás: keverés; a sor elhúzása balra: törlés, jobbra: listák. Dupla koppintás a
+  dalon: a cím, az előadó és a borító szerkeszthető, és a fájl címkéibe kerül.
+- **Engedélyek**: csak internet és értesítés. Újratelepítés után, ha már van `Zene/Dalma` mappa, a rendszer
+  egyszer megkérdezi a zene-hozzáférést a régi dalokhoz.
 
 ## Dalma
 
 Mindig sötét, menta és tejfehér egy mély éjszakai zöldön, csillagos ég, Fraunces és Nunito betűk.
-Dalma lélegzik, pislog, néha körbenéz, köszönéskor biccent és kacsint, este álmos. Töltés közben
-közelebb jön, elfordul, és a lejátszás-jel alakú hajcsatja a valódi százalékkal telik; a végén
-halkan rezeg a telefon, és egy hullócsillag fut át az égen. Ha a telefonon ki van kapcsolva az
-animáció, Dalma állóképekkel jelez.
+Dalma lélegzik, pislog, köszönéskor billen a feje és kacsint, este álmosan ébred a falnak dőlésből.
+Töltés közben a hajcsatja, amely lejátszás-jel alakú, üresen jön, és a valódi haladással telik,
+lökésekben; közben a csat felé billenti a fejét és odapillant, a végén örül, halkan rezeg a telefon, és egy
+hullócsillag fut át az égen. A lejátszóban a bal alsó sarokban hallgat: nappal nyitott szemmel, élénkebben
+ringva, este csukott szemmel, gyengédebben; megállítva áll és pislog; késő este, ha semmi nem szól, a falnak
+dőlve alszik. Ha a telefonon ki van kapcsolva az animáció, Dalma állóképekkel jelez.
 
-A mostani Dalma vektoros rajz (`docs/mascot/dalma.svg`). Ha elkészülnek az AI-val rajzolt képek és
-klipek (lásd a feladatleírást a `docs/spec/` mappában), a `tools/dalma-assets.py` kivágja a magenta
-hátteret, átlátszó PNG-t és animált WebP-t készít az `app/src/main/assets/dalma/` mappába, és az app
-onnantól azokat használja. Hosszan nyomva a főképernyőt előjön a rejtett névjegy: verzió, motor, licencek,
-és ha a legutóbbi mentés nem sikerült, egy sor az okról (koppintásra a napló megosztható).
+Dalma vektoros rajz, a tervező pózaiból (`docs/spec/0.2.0/design/dalma/*.svg`) építve
+(`tools/poses2mascot.py` → `docs/mascot/dalma.svg` → `tools/svg2compose.py`). Hosszan nyomva Dalmát
+előjön a rejtett névjegy: verzió, motor, licencek.
 
 ## Telepítés
 
@@ -50,16 +56,24 @@ Az app naponta egyszer megnézi, van-e újabb kiadás, és egy sorral szól: *Va
 
 ## Fejlesztés
 
+Friss clone-ból egy parancs építi meg (az Android SDK-n kívül semmi nem kell előre; a yt-dlp-t a build
+tölti le és ellenőrzi):
+
+```bash
+./gradlew :app:assembleRelease
+```
+
 - `core/`: tiszta Kotlin, Android SDK nélkül fordul és tesztelhető: `./gradlew -p core test`.
-  A valódi yt-dlp + ffmpeg futtatásával: `./gradlew -p core test -Ddalma.engineTests=true -Ddalma.ytdlp=$(which yt-dlp)`.
-- `app/`: Jetpack Compose, WorkManager, MediaStore; a letöltőmotor a
+  A valódi yt-dlp + ffmpeg futtatásával: `./gradlew -p core test -Ddalma.engineTests=true -Ddalma.ytdlp=$(which yt-dlp)`;
+  a címkeírás tesztje egy mutagenes Pythonnal és ffmpeg-gel: `-Ddalma.python=$(which python3)`.
+- `app/`: Jetpack Compose, Media3, WorkManager, MediaStore; a letöltőmotor a
   [youtubedl-android](https://github.com/yausername/youtubedl-android) csomagolta Python + yt-dlp +
-  QuickJS + FFmpeg. Teljes build: `./gradlew :app:assembleRelease` (Android SDK kell).
+  QuickJS + FFmpeg, és a címkéket ugyanennek a Pythonnak a mutagenje írja.
 - Tesztek: Robolectric + Roborazzi képernyőképek (`./gradlew :app:recordRoborazziDebug`), emulátoron vagy
   USB-re dugott telefonon a motor és a Zene mappa, a kicsinyített kiadási APK-n
   (`./gradlew :app:connectedReleaseAndroidTest`).
-- Ha egy mentés nem sikerül, a rejtett névjegyben (hosszan nyomva a főképernyőt) egy sor mutatja az okot;
-  rákoppintva a teljes napló megosztható, így a hiba telefonkábel nélkül is elküldhető.
+- A tervező feladatleírása és képernyői: `docs/spec/0.2.0/`; a döntések: `CLAUDE.md`; a motor buktatói:
+  `docs/handover.md`.
 - CI: a `.github/workflows/build.yml` minden pushra lefuttatja a teszteket, a lintet, elkészíti a
   képernyőképeket (a `ci-screenshots` ágra tolja), és feltölti az arm64 APK-t előnézeti kiadásként;
   `v*` tagnél aláírt kiadás készül.
@@ -88,6 +102,6 @@ Titkok nélkül a CI és a helyi build a tárolóban lévő, nyilvános előnéz
 
 ## Licencek
 
-yt-dlp (Unlicense), youtubedl-android (GPL-3.0), FFmpeg (LGPL/GPL), Python (PSF), QuickJS (MIT),
-Fraunces és Nunito (OFL 1.1), Jetpack Compose és AndroidX (Apache 2.0). A youtubedl-android GPL-3.0
-licence miatt aki megkapja az appot, kérésre a forrását is megkaphatja: ez a tároló az.
+yt-dlp (Unlicense), youtubedl-android (GPL-3.0), FFmpeg (LGPL/GPL), Python (PSF), mutagen (GPL-2.0+),
+QuickJS (MIT), Fraunces és Nunito (OFL 1.1), Jetpack Compose és AndroidX (Apache 2.0). A youtubedl-android
+GPL-3.0 licence miatt aki megkapja az appot, kérésre a forrását is megkaphatja: ez a tároló az.

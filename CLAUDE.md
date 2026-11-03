@@ -38,18 +38,18 @@ mozgás, a háttér, minden. A pózok minden vonala, a rajzba írt ringás és l
 mozgáscsíkok időzítése és a képernyők színkódjai a mérce; ahol az app egy technikát nem tud (maszk, betű), ugyanazt
 a látványt más úton kell előállítani, nem elhagyni. Ami eltér, az hiba, nem ízlés.
 
-A terv a feladatleírás: `docs/spec/0.2.0/DALMA-0.2.0.md`, a képernyők és Dalma pózai mellette. Minden,
-ami a `Zene/Dalma` mappában van, Dalmáé: megmutatja, lejátssza, listába rendezi, szöveg, gomb és súgó
-nélkül. Lépésenként, külön commitokban, a leírás sorrendjében; az 1. lépés (könyvtár) után megálltunk.
-Ami a leírásban nincs, az nincs a képernyőn. A Megosztás-lap és a letöltés változatlan; csak az nyúl
-hozzá, ami a lejátszóhoz kell.
+A terv a feladatleírás: `docs/spec/0.2.0/DALMA-0.2.0.md` (negyedik kiadás), a képernyők, a mozgáscsíkok és
+Dalma pózai mellette. Minden, ami a `Zene/Dalma` mappában van, Dalmáé: megmutatja, lejátssza, listába rendezi,
+szöveg, gomb és súgó nélkül. A lépések külön commitokban elkészültek (1–7, 7b, 7c, 8, 9, 9b, 10, 11; a
+`docs/0.2.0-terkep.md` a térkép). Ami a leírásban nincs, az nincs a képernyőn. A letöltés maga változatlan, a
+Megosztás-lap animációja a 10. lépés szerint a csíkoké. Ami ezután jön, a 0.2.x csiszolás, ugyanezzel a mércével.
 
 ## Szerkezet
 
 | Hol | Mi |
 | --- | --- |
 | `core/` | Tiszta Kotlin, Android nélkül, helyben is fordul és tesztelhető: linkfelismerés, yt-dlp parancssor, kimenet-értelmezés, hibaosztályozás és újrapróbálási létra, fájlnév, mentett dalok tára, frissítés-ellenőrzés. |
-| `app/` | Az Android app: `engine/` (saját futtató a youtubedl-android binárisai fölött, ellenőrzött yt-dlp-önfrissítés), `work/` (WorkManager előtérben, értesítéssel), `data/` (MediaStore, tár, az utolsó mentés belső naplója), `share/` (a Megosztás-lap), `home/` (főképernyő, rejtett névjegy), `ui/` (téma, ég, mondat, kabala). |
+| `app/` | Az Android app: `engine/` (saját futtató a youtubedl-android binárisai fölött, ellenőrzött yt-dlp-önfrissítés, Python-futtatás), `work/` (WorkManager előtérben, értesítéssel), `data/` (MediaStore, tár, az utolsó mentés belső naplója, címkeírás mutagennel), `share/` (a Megosztás-lap), `play/` (a lejátszó: szolgáltatás, képernyő, lista-mód, mozdulatok, szerkesztés), `home/` (főképernyő, rejtett névjegy), `ui/` (téma, ég, mondat, kabala). |
 | `docs/handover.md` | Tapasztalatok és buktatók az első működő változatig (szimlinkek, R8, zipapp, HyperOS); nyitott dolgok. Olvasd el, mielőtt a motorhoz nyúlsz. |
 | `docs/mascot/dalma.svg` | Dalma rétegei. `tools/svg2compose.py` ebből generálja a `MascotArt.kt`-t és az ikonokat. A rétegszerződést `tools/check-mascot.py` ellenőrzi. |
 | `tools/dalma-assets.py` | Ha elkészülnek az AI-s képek/videók (magenta háttér), ez vágja ki és készít átlátszó PNG-t, animált WebP-t és hajcsat-maszkot az `app/src/main/assets/dalma/` mappába. Ha a mappa létezik, az app azt használja a vektoros Dalma helyett. |
@@ -89,5 +89,7 @@ hozzá, ami a lejátszóhoz kell.
    `DALMA_UPDATE_READ_TOKEN` csak privát repónál: finomhangolt (fine-grained) token, csak erre az egy
    tárolóra, egyetlen joggal (Contents: Read-only), legfeljebb 1 évre; az APK-ba kerül, bárki
    kiolvashatja, ezért klasszikus `ghp_` token soha.
-2. `git tag v1.0.0 && git push origin v1.0.0` → a CI elkészíti és feltölti a `Dalma-1.0.0.apk`-t.
+2. `git tag v0.2.0 && git push origin v0.2.0` → a CI elkészíti és feltölti a `Dalma-0.2.0.apk`-t. Amíg a GitHub
+   Actions le van tiltva, az APK a Macen készül az előnézeti kulccsal (`out/Dalma-x.y.z.apk`, versionCode =
+   percek 1970 óta, mint a CI-ban), és a kiadás feltöltése a tulajdonos döntése.
 3. Az app naponta egyszer megnézi a legújabb kiadást, és egy sorral szól: „Van újabb Dalma.”

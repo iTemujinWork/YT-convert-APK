@@ -186,3 +186,13 @@ dependencies {
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
 }
+
+// A fresh clone has no yt-dlp yet (res/raw/ytdlp stays out of git): the build fetches the newest
+// release, checked against its published checksum, so one command builds the app.
+val fetchYtDlp by tasks.registering(Exec::class) {
+    description = "Bundles the newest verified yt-dlp when none is there"
+    val target = layout.projectDirectory.file("src/main/res/raw/ytdlp").asFile
+    onlyIf { !target.isFile }
+    commandLine("bash", rootProject.file("tools/fetch-ytdlp.sh").absolutePath, target.absolutePath)
+}
+tasks.named("preBuild") { dependsOn(fetchYtDlp) }
