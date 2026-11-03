@@ -57,10 +57,11 @@ class MascotFidelityTest {
 
     @Test fun alap() = pose("alap") {}
     @Test fun orul() = pose("orul") { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }
-    @Test fun bocsanat() = pose("bocsanat") { setExpression(Expression.SORRY); drop.snapTo(1f) }
+    @Test fun bocsanat() = pose("bocsanat") { sorryStill() }
     @Test fun almos() = pose("almos") { setExpression(Expression.SLEEPY); zz.snapTo(1f) }
     @Test fun hallgatEste() = pose("hallgat-este") { setExpression(Expression.NIGHT) }
     @Test fun alszikFal() = pose("alszik-fal") { sleepAtWallStill() }
-    @Test fun kacsint() = pose("kacsint") { greetStill() }
+    // The file holds the head, the back hair and the fringe at 4° alike; the motion's 1.2× and 0.6× are the canvas's.
+    @Test fun kacsint() = pose("kacsint") { greetTilt.snapTo(4f); greetTiltBack.snapTo(4f); greetTiltFront.snapTo(4f); winkSquash.snapTo(1f); browMorph.snapTo(1f) }
     @Test fun tolt() = pose("tolt") { clipFill = 0.6f }
 }

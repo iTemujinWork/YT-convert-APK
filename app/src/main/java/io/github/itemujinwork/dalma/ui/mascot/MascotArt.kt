@@ -59,7 +59,7 @@ internal object MascotArt {
             Shape("M 108,135.6 Q 120,153.6 132,135.6 Q 120,140.4 108,135.6 Z", 0xFFB9645A, 1f, 0xFF4B3832, 1f, 1.44f, 0, 1),
         ),
         "mouth_sorry" to listOf(
-            Shape("M 114.61,140.95 Q 122.2,145.1 128.95,139.69", 0L, 0f, 0xFF4B3832, 1f, 2.4f, 1, 0),
+            Shape("M 112.8,140.4 Q 120,145.2 127.2,140.4", 0L, 0f, 0xFF4B3832, 1f, 2.4f, 1, 0),
         ),
         "mouth_sleepy" to listOf(
             Shape("M 114,140.4 Q 120,144 126,140.4", 0L, 0f, 0xFF4B3832, 1f, 2.4f, 1, 0),
@@ -101,16 +101,16 @@ internal object MascotArt {
             Shape("M 130.8,97.2 Q 139.2,93.6 147.6,98.4", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
         "brow_l_sorry" to listOf(
-            Shape("M 90.52,99.69 Q 98.78,97.76 106.73,92.25", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+            Shape("M 92.4,97.2 Q 100.8,96 109.2,91.2", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
         "brow_r_sorry" to listOf(
-            Shape("M 128.25,90.37 Q 137.04,94.42 145.51,94.88", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+            Shape("M 130.8,91.2 Q 139.2,96 147.6,97.2", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
         "brow_l_wink" to listOf(
-            Shape("M 93.89,97.72 Q 102.52,94.72 110.73,97.7", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+            Shape("M 92.4,99.6 Q 100.8,96 109.2,98.4", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
         "brow_r_wink" to listOf(
-            Shape("M 132.45,96.81 Q 141.16,92.61 149.21,97.98", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+            Shape("M 130.8,96 Q 139.2,91.2 147.6,96", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
         "brow_l_asleep" to listOf(
             Shape("M 92.4,100.8 Q 100.8,98.4 109.2,100.8", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
@@ -118,11 +118,29 @@ internal object MascotArt {
         "brow_r_asleep" to listOf(
             Shape("M 130.8,100.8 Q 139.2,98.4 147.6,100.8", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
         ),
+        "brow_l_happy" to listOf(
+            Shape("M 92.4,96 Q 100.8,91.2 109.2,94.8", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
+        "brow_r_happy" to listOf(
+            Shape("M 130.8,94.8 Q 139.2,91.2 147.6,96", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
+        "brow_l_sleepy" to listOf(
+            Shape("M 92.4,99.6 Q 100.8,97.2 109.2,99.6", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
+        "brow_r_sleepy" to listOf(
+            Shape("M 130.8,99.6 Q 139.2,97.2 147.6,99.6", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
+        "brow_l_night" to listOf(
+            Shape("M 92.4,99.6 Q 100.8,96 109.2,98.4", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
+        "brow_r_night" to listOf(
+            Shape("M 130.8,98.4 Q 139.2,96 147.6,99.6", 0L, 0f, 0xFF4B3832, 0.75f, 2.4f, 1, 0),
+        ),
         "eye_l_wink" to listOf(
-            Shape("M 93.92,114.57 Q 101.52,109.08 108.28,115.57", 0L, 0f, 0xFF3A2B26, 1f, 2.88f, 1, 0),
+            Shape("M 93.6,116.4 Q 100.8,110.4 108,116.4", 0L, 0f, 0xFF3A2B26, 1f, 2.88f, 1, 0),
         ),
         "eye_r_wink" to listOf(
-            Shape("M 131.61,108.78 Q 140.33,104.58 148.29,111.15", 0L, 0f, 0xFF3A2B26, 1f, 1.92f, 1, 0),
+            Shape("M 130.8,108 Q 139.2,103.2 147.6,109.2", 0L, 0f, 0xFF3A2B26, 1f, 1.92f, 1, 0),
         ),
         "mouth_night" to listOf(
             Shape("M 110.4,139.2 Q 120,146.4 129.6,139.2", 0L, 0f, 0xFF4B3832, 1f, 2.52f, 1, 0),
@@ -145,7 +163,7 @@ internal object MascotArt {
             Shape("M 150.66,60.77 L 151.68,69.1", 0L, 0f, 0xFFF4FBF8, 0.85f, 1.68f, 1, 0),
         ),
         "drop" to listOf(
-            Shape("M 173.47,84 Q 179.08,93.15 174.72,98.35 Q 169.52,93.98 173.47,84 Z", 0xFFBFE6DA, 0.9f, 0L, 0f, 1f, 0, 0),
+            Shape("M 176.4,88.8 Q 181.2,98.4 176.4,103.2 Q 171.6,98.4 176.4,88.8 Z", 0xFFBFE6DA, 0.9f, 0L, 0f, 1f, 0, 0),
         ),
         "sparkles" to listOf(
             Shape("M 184.8,62.4 L 186.96,68.64 L 193.2,70.8 L 186.96,72.96 L 184.8,79.2 L 182.64,72.96 L 176.4,70.8 L 182.64,68.64 Z", 0xFF8FD3BE, 1f, 0L, 0f, 1f, 0, 0),

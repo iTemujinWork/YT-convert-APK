@@ -21,10 +21,11 @@
       "mouth_smile"
     ],
     "koszon": [
-      "eye_l_open",
-      "eye_r_closed",
-      "brow_l",
-      "brow_r",
+      "eye_r_open",
+      "eye_l_wink",
+      "eye_r_wink",
+      "brow_l_wink",
+      "brow_r_wink",
       "mouth_smile"
     ],
     "pislog": [
@@ -37,8 +38,8 @@
     "orul": [
       "eye_l_happy",
       "eye_r_happy",
-      "brow_l",
-      "brow_r",
+      "brow_l_happy",
+      "brow_r_happy",
       "mouth_happy",
       "sparkles"
     ],
@@ -53,9 +54,24 @@
     "almos": [
       "eye_l_sleepy",
       "eye_r_sleepy",
-      "brow_l",
-      "brow_r",
+      "brow_l_sleepy",
+      "brow_r_sleepy",
       "mouth_sleepy",
+      "zz"
+    ],
+    "este": [
+      "eye_l_closed",
+      "eye_r_closed",
+      "brow_l_night",
+      "brow_r_night",
+      "mouth_night"
+    ],
+    "alszik": [
+      "eye_l_closed",
+      "eye_r_closed",
+      "brow_l_asleep",
+      "brow_r_asleep",
+      "mouth_asleep",
       "zz"
     ]
   }

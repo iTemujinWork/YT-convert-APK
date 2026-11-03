@@ -27,6 +27,7 @@ ORDER = [
     "eye_l_open", "eye_l_closed", "eye_l_happy", "eye_l_sleepy",
     "eye_r_open", "eye_r_closed", "eye_r_happy", "eye_r_sleepy",
     "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry", "brow_l_wink", "brow_r_wink", "brow_l_asleep", "brow_r_asleep",
+    "brow_l_happy", "brow_r_happy", "brow_l_sleepy", "brow_r_sleepy", "brow_l_night", "brow_r_night",
     "eye_l_wink", "eye_r_wink", "mouth_night", "mouth_asleep",
     "hair_cap", "hair_front", "clip", "drop", "sparkles", "zz", "face_clip",
 ]
@@ -82,7 +83,13 @@ def fmt(v):
     return f"{v:.2f}".rstrip("0").rstrip(".")
 
 
-POSE_ROTATIONS = {"alszik-fal.svg": ("rotate(-9 60 200)", "rotate(-10 100 136)")}
+# A pose's own tilt of the head (and the lean against the wall) is not baked: the app animates those itself,
+# about the same pivots, so the variant shapes stay in the face's own frame.
+POSE_ROTATIONS = {
+    "alszik-fal.svg": ("rotate(-9 60 200)", "rotate(-10 100 136)"),
+    "kacsint.svg": ("rotate(4 100 100)",),
+    "bocsanat.svg": ("rotate(-5 100 100)",),
+}
 
 
 def shapes_of(path):
@@ -249,7 +256,7 @@ def add_variants(layers, base_keys):
             if cx < 66 or cx > 134:
                 if afar: layers[afar].append(s)
             elif cy < 86:
-                if mood in ("sorry", "wink", "asleep"): layers[f"brow_{side(cx)}_{mood}"].append(s)
+                layers[f"brow_{side(cx)}_{mood}"].append(s)  # every pose has its own brows
             elif cy < 102:
                 if mood in ("happy", "sleepy"): layers[f"eye_{side(cx)}_{mood}"].append(s)
                 elif mood == "night": layers[f"eye_{side(cx)}_closed"].append(s)  # the closed eyes of the night

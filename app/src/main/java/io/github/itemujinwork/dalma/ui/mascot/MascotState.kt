@@ -208,8 +208,6 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
             launch { sparkles.go(if (next == Expression.HAPPY) 1f else 0f, tween(350)) }
             launch { drop.go(if (next == Expression.SORRY) 1f else 0f, tween(450, easing = LinearOutSlowInEasing)) }
             launch { zz.go(if (next == Expression.SLEEPY || next == Expression.ASLEEP) 1f else 0f, tween(700)) }
-            // A sorry face looks down a little; the others look at you.
-            launch { gazeY.go(if (next == Expression.SORRY) 0.45f else 0f, tween(400)) }
             if (images != null) {
                 launch {
                     show(
@@ -539,13 +537,25 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
-    /** A kind, apologetic face with a slight tilt and a small sinking of the head. */
+    /** A kind, apologetic face, the head tilted 5° the other way about the greeting's pivot, as bocsanat.svg has it. */
     suspend fun sorry() {
         coroutineScope {
             launch { setExpression(Expression.SORRY) }
-            launch { tilt.go(if (images == null) 5f else 0f, tween(450, easing = FastOutSlowInEasing)) }
-            launch { if (images == null) nod.go(3f, tween(500, easing = FastOutSlowInEasing)) }
+            if (images == null) {
+                launch { greetTilt.go(SORRY_TILT, tween(450, easing = FastOutSlowInEasing)) }
+                launch { greetTiltBack.go(SORRY_TILT, tween(450, easing = FastOutSlowInEasing)) }
+                launch { greetTiltFront.go(SORRY_TILT, tween(450, easing = FastOutSlowInEasing)) }
+            }
         }
+    }
+
+    /** The same, held: for screenshots. */
+    suspend fun sorryStill() {
+        setExpression(Expression.SORRY)
+        drop.snapTo(1f)
+        greetTilt.snapTo(SORRY_TILT)
+        greetTiltBack.snapTo(SORRY_TILT)
+        greetTiltFront.snapTo(SORRY_TILT)
     }
 
     suspend fun neutral() {
@@ -553,6 +563,9 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
             launch { setExpression(Expression.NEUTRAL) }
             launch { tilt.go(0f, tween(400)) }
             launch { nod.go(0f, tween(400)) }
+            launch { greetTilt.go(0f, tween(400)) }
+            launch { greetTiltBack.go(0f, tween(400)) }
+            launch { greetTiltFront.go(0f, tween(400)) }
         }
     }
 
@@ -568,6 +581,7 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 private const val GREET_TILT = 4f
 private const val GREET_HAIR_TIMES = 1.2f
 private const val GREET_FRINGE_TIMES = 0.6f
+private const val SORRY_TILT = -5f
 private const val WALL_LEAN = -9f
 
 /** [arriving]: she is not there until [MascotState.arrive] fades her in, so the first frame shows no one. */

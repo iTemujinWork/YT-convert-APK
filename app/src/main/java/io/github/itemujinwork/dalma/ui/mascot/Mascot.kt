@@ -39,17 +39,17 @@ import androidx.compose.ui.unit.IntSize
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.theme.DalmaColors
 import kotlin.math.roundToInt
-import kotlin.math.sin
 
 private class Variants(val eyeL: String, val eyeR: String, val mouth: String, val browL: String, val browR: String)
 
 private fun variants(expression: Expression): Variants = when (expression) {
     Expression.NEUTRAL -> Variants("eye_l_open", "eye_r_open", "mouth_smile", "brow_l", "brow_r")
-    Expression.HAPPY -> Variants("eye_l_happy", "eye_r_happy", "mouth_happy", "brow_l", "brow_r")
+    // Every pose file has its own brows: raised when happy, flatter when sleepy, soft at night.
+    Expression.HAPPY -> Variants("eye_l_happy", "eye_r_happy", "mouth_happy", "brow_l_happy", "brow_r_happy")
     Expression.SORRY -> Variants("eye_l_open", "eye_r_open", "mouth_sorry", "brow_l_sorry", "brow_r_sorry")
-    Expression.SLEEPY -> Variants("eye_l_sleepy", "eye_r_sleepy", "mouth_sleepy", "brow_l", "brow_r")
+    Expression.SLEEPY -> Variants("eye_l_sleepy", "eye_r_sleepy", "mouth_sleepy", "brow_l_sleepy", "brow_r_sleepy")
     // hallgat-este.svg and alszik-fal.svg: closed eyes, and each its own brows and smile.
-    Expression.NIGHT -> Variants("eye_l_closed", "eye_r_closed", "mouth_night", "brow_l_wink", "brow_r_wink")
+    Expression.NIGHT -> Variants("eye_l_closed", "eye_r_closed", "mouth_night", "brow_l_night", "brow_r_night")
     Expression.ASLEEP -> Variants("eye_l_closed", "eye_r_closed", "mouth_asleep", "brow_l_asleep", "brow_r_asleep")
 }
 
@@ -67,10 +67,8 @@ private val LEAN_PIVOT = Offset(72f, 240f)
 /** The hair clip is drawn tilted 7° about this point (the files' rotate(-7 131 54)); turned back by 7° it stands straight. */
 private val CLIP_PIVOT = Offset(157.2f, 64.8f)
 
-private const val TWO_PI = (Math.PI * 2).toFloat()
-
-/** Time-driven values that are not part of the state: the sheet's breathing, a slow drift for twinkles, the designer's idle motion this frame, and how full the clip shows. */
-private class Clock(val breath: Float, val drift: Float, val idle: IdlePose, val clipFill: Float?)
+/** Time-driven values that are not part of the state: the sheet's breathing, the designer's idle motion this frame, and how full the clip shows. */
+private class Clock(val breath: Float, val idle: IdlePose, val clipFill: Float?)
 
 /** The brief's glance: 2.2 right and 2.4 up at most, in the files' points; the lid's line goes with the eye, the brows stay. */
 private const val GLANCE_X = 2.2f * 1.2f
@@ -99,17 +97,6 @@ fun Mascot(
             label = "breathing",
         ).value
     }
-    val drift: Float = if (reducedMotion) {
-        0f
-    } else {
-        rememberInfiniteTransition(label = "drift").animateFloat(
-            initialValue = 0f,
-            targetValue = TWO_PI,
-            animationSpec = infiniteRepeatable(tween(6_000)),
-            label = "drift",
-        ).value
-    }
-
     // A download fills the clip in jerks: each report a quick move (150 ms), never a jump.
     val clipShown = remember { Animatable(0f) }
     val clipFill = state.clipFill
@@ -145,7 +132,7 @@ fun Mascot(
         @Suppress("UNUSED_VARIABLE") val tick = frame
         val idle = state.idlePose()
         // The sheet's own breathing gives way to the designer's motion as far as one is on.
-        val clock = Clock(breath * (1f - idle.weight), drift, idle, if (clipFill != null) clipShown.value else null)
+        val clock = Clock(breath * (1f - idle.weight), idle, if (clipFill != null) clipShown.value else null)
         val images = state.images
         if (images != null) {
             drawPictures(state, images, clock)
@@ -223,39 +210,53 @@ private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
             translate(0f, hop + idle.rise)
             scale(1f - 0.03f * squash, 1f + 0.045f * squash, pivot = Offset(120f, 240f))
         }) {
+            // The head turns about the chin, as the pose files have it: it tilts and swings with the music.
+            val headAngle = state.tilt.value + state.sway.value + idle.head
+            // The files draw the back hair first, then the neck and the body over it, then the face: the neck shows.
+            withTransform({
+                translate(0f, -1.6f * breath)
+                rotate(headAngle, pivot = HEAD_PIVOT)
+            }) {
+                drawHairBack(state, clock)
+            }
             // The body breathes the sheet's way while no designer's motion is on: the shoulders rise a little.
             scale(1f + 0.008f * breath, 1f + 0.014f * breath, pivot = Offset(120f, 240f)) {
                 drawLayer("body")
             }
-            // The head turns about the chin, as the pose files have it: it tilts and swings with the music.
-            val headAngle = state.tilt.value + state.sway.value + idle.head
             withTransform({
                 translate(0f, -1.6f * breath)
                 rotate(headAngle, pivot = HEAD_PIVOT)
             }) {
                 drawHead(state, clock)
             }
-            drawExtras(state, clock)
+            drawExtras(state)
+        }
+    }
+}
+
+/** The nod dips the head a little and squashes it a touch; the back hair and the face share it. */
+private inline fun DrawScope.nodding(state: MascotState, block: DrawScope.() -> Unit) {
+    withTransform({
+        translate(0f, state.nod.value * 0.9f)
+        scale(1f, 1f - state.nod.value * 0.004f, pivot = Offset(120f, 104f))
+    }) { block() }
+}
+
+/** The back hair: with the head's tilt, 100 ms behind the greeting, swinging about the nape when she listens. */
+private fun DrawScope.drawHairBack(state: MascotState, clock: Clock) {
+    nodding(state) {
+        rotate(state.greetTiltBack.value, pivot = GREET_PIVOT) {
+            rotate(clock.idle.hair, pivot = HAIR_PIVOT) {
+                translate(0f, -0.4f * clock.breath) { drawLayer("hair_back") }
+            }
         }
     }
 }
 
 private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
-    val nodDip = state.nod.value * 0.9f
-    val nodSquash = 1f - state.nod.value * 0.004f
-    val headPivot = Offset(120f, 104f)
     val idle = clock.idle
-    withTransform({
-        translate(0f, nodDip)
-        scale(1f, nodSquash, pivot = headPivot)
-    }) {
-        // The greeting tilts the head; the back hair follows it 100 ms late, the fringe 150 ms late.
-        // Listening, the back hair swings about the nape and the fringe about the top of the head, each behind the head.
-        rotate(state.greetTiltBack.value, pivot = GREET_PIVOT) {
-            rotate(idle.hair, pivot = HAIR_PIVOT) {
-                translate(0f, -0.4f * clock.breath) { drawLayer("hair_back") }
-            }
-        }
+    nodding(state) {
+        // The greeting tilts the head; the fringe follows it 150 ms late. Listening, the fringe swings about the top of the head, behind the head.
         rotate(state.greetTilt.value, pivot = GREET_PIVOT) { drawLayer("head") }
         // The fringe's shadow lies on the face but belongs to the fringe: it moves with it, cut to the face's outline as in the files.
         rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
@@ -271,6 +272,9 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
             drawFace(state)
             // The cap of the hair sits on the skull and goes with the head; only the fringe under it swings.
             translate(0f, -0.6f * clock.breath) { drawLayer("hair_cap") }
+            // The tear is in the head's group in bocsanat.svg: it tilts with the head.
+            val drop = state.drop.value
+            if (drop > 0f) translate(0f, (1f - drop) * -4f) { drawLayer("drop", drop) }
         }
         rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
             rotate(idle.fringe, pivot = FRINGE_PIVOT) {
@@ -363,27 +367,10 @@ private fun DrawScope.drawClip(fill: Float?) {
     for (shape in shapes.drop(1)) drawShape(shape)
 }
 
-private fun DrawScope.drawExtras(state: MascotState, clock: Clock) {
-    val drift = clock.drift
+/** The sparkles and the z's, exactly where the pose files put them (outside the head): they come and go, they do not drift. */
+private fun DrawScope.drawExtras(state: MascotState) {
     val sparkles = state.sparkles.value
-    if (sparkles > 0f) {
-        // Each sparkle twinkles on its own beat.
-        MascotPaths.layer("sparkles").forEachIndexed { index, shape ->
-            val twinkle = 0.55f + 0.45f * sin(drift * 2.3f + index * 2.1f)
-            val pulse = 0.85f + 0.15f * sin(drift * 2.3f + index * 2.1f + 1f)
-            scale(pulse, pulse, pivot = shape.bounds.center) { drawShape(shape, sparkles * twinkle) }
-        }
-    }
-    val drop = state.drop.value
-    if (drop > 0f) translate(0f, (1f - drop) * -4f + 0.8f * sin(drift * 0.7f)) { drawLayer("drop", drop) }
+    if (sparkles > 0f) drawLayer("sparkles", sparkles)
     val zz = state.zz.value
-    if (zz > 0f) {
-        // The z's float up one after the other.
-        MascotPaths.layer("zz").forEachIndexed { index, shape ->
-            val phase = drift * 0.9f + index * 1.4f
-            val rise = -2.5f - 2.5f * sin(phase)
-            val fade = 0.6f + 0.4f * sin(phase + 0.6f)
-            translate(0.6f * sin(phase * 0.5f), rise) { drawShape(shape, zz * fade) }
-        }
-    }
+    if (zz > 0f) drawLayer("zz", zz)
 }
