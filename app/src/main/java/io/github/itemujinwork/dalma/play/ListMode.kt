@@ -177,6 +177,8 @@ class ListActions(
     val onRenameCommit: (old: String, typed: String) -> Unit = { _, _ -> },
     val onDeleteListConfirm: (String) -> Unit = {},
     val onDeleteListCancel: () -> Unit = {},
+    /** A double tap on a row: editing that song. */
+    val onEditRequest: (Song) -> Unit = {},
 )
 
 /**
@@ -474,6 +476,7 @@ internal fun SongRows(
     onToggleList: (Song, String) -> Unit,
     onCreateList: (Song, String) -> Unit,
     onOpenBounds: (Rect?) -> Unit,
+    onEditRequest: (Song) -> Unit,
     pullToSearch: NestedScrollConnection,
     modifier: Modifier,
 ) {
@@ -511,6 +514,7 @@ internal fun SongRows(
                             onToggleList = {},
                             onCreateList = {},
                             onOpenBounds = {},
+                            onEdit = {},
                             interactive = false,
                             modifier = Modifier.cascadeExit(cascade, index),
                         )
@@ -546,6 +550,7 @@ internal fun SongRows(
                     onToggleList = { name -> onToggleList(song, name) },
                     onCreateList = { name -> onCreateList(song, name) },
                     onOpenBounds = onOpenBounds,
+                    onEdit = { onEditRequest(song) },
                     modifier = Modifier
                         .animateItem(fadeInSpec = null, fadeOutSpec = null, placementSpec = if (reduced) null else tween(400, easing = DalmaEase))
                         .cascadeEnter(cascade, index),
@@ -577,12 +582,14 @@ private fun SongRow(
     onToggleList: (String) -> Unit,
     onCreateList: (String) -> Unit,
     onOpenBounds: (Rect?) -> Unit,
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
     interactive: Boolean = true,
 ) {
     val reduced = LocalReducedMotion.current
     // The pointer handlers live as long as the row; the handlers change with the screen's state.
     val pick by rememberUpdatedState(onPick)
+    val edit by rememberUpdatedState(onEdit)
     val longPress by rememberUpdatedState(onLongPress)
     val deleteRequest by rememberUpdatedState(onDeleteRequest)
     val openRow by rememberUpdatedState(onOpen)
@@ -631,7 +638,7 @@ private fun SongRow(
                                 onDragCancel = { scope.launch { offset.animateTo(0f, spec(300)) } },
                             )
                         }
-                        .pointerInput(song.id) { detectTapGestures(onTap = { pick() }, onLongPress = { longPress() }) }
+                        .pointerInput(song.id) { detectTapGestures(onTap = { pick() }, onDoubleTap = { edit() }, onLongPress = { longPress() }) }
                 },
             ),
     ) {

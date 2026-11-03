@@ -2,10 +2,12 @@ package io.github.itemujinwork.dalma.play
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.unit.dp
@@ -13,16 +15,22 @@ import kotlin.math.abs
 
 private enum class Early { Up, Moved, Gone }
 
+/** The brief's window for the second tap. */
+private const val DOUBLE_TAP_MILLIS = 300L
+
 /**
  * The player's moves in one pointer handler, so they never fight: a lift before the long-press
  * time is a tap, movement past the touch slop before that time is a swipe (left/right for
  * next/previous, up for the list) or, downwards, a live pull that reports every move, and
- * holding still past it is a long press. The handlers are read fresh on every event: the pointer
- * handler lives as long as the screen, the handlers change with its state.
+ * holding still past it is a long press. A tap acts at once; a second tap within 300 ms is a
+ * double tap on top of it (the caller undoes the first). The handlers are read fresh on every
+ * event: the pointer handler lives as long as the screen, the handlers change with its state.
  */
 @Composable
 fun Modifier.songGestures(
     onTap: () -> Unit,
+    /** Where the double tap landed, in the handler's own coordinates. */
+    onDoubleTap: (position: Offset) -> Unit = {},
     /** -1 for a swipe to the left (next), +1 for a swipe to the right (previous). */
     onSwipe: (direction: Int) -> Unit,
     onSwipeUp: () -> Unit,
@@ -33,6 +41,7 @@ fun Modifier.songGestures(
     onPullEnd: () -> Unit = {},
 ): Modifier {
     val tap by rememberUpdatedState(onTap)
+    val doubleTap by rememberUpdatedState(onDoubleTap)
     val swipe by rememberUpdatedState(onSwipe)
     val swipeUp by rememberUpdatedState(onSwipeUp)
     val longPress by rememberUpdatedState(onLongPress)
@@ -67,7 +76,12 @@ fun Modifier.songGestures(
             result
         }
         when (early) {
-            Early.Up -> tap()
+            Early.Up -> {
+                tap()
+                // A second finger down within 300 ms, and up again: a double tap where the first was.
+                withTimeoutOrNull(DOUBLE_TAP_MILLIS) { awaitFirstDown() } ?: return@awaitEachGesture
+                if (withTimeoutOrNull(longPressMillis) { waitForUpOrCancellation() } != null) doubleTap(down.position)
+            }
             Early.Gone -> Unit
             Early.Moved -> {
                 if (dy > 0f && dy >= abs(dx)) {

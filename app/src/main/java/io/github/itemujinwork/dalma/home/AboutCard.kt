@@ -75,6 +75,7 @@ fun AboutCard(update: AppUpdateCheck.Available?, onDismiss: () -> Unit) {
                 R.string.about_license_ytdl_android,
                 R.string.about_license_ffmpeg,
                 R.string.about_license_python,
+                R.string.about_license_mutagen,
                 R.string.about_license_quickjs,
                 R.string.about_license_fonts,
                 R.string.about_license_compose,

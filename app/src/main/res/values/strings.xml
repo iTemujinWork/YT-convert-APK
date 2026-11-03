@@ -46,11 +46,16 @@
     <string name="list_all">Mind</string>
     <string name="delete_question">Töröljem?</string>
     <string name="delete_yes">Igen</string>
+    <!-- Editing a song: the one row that is a label, the pill, and the word under the line after a save. -->
+    <string name="edit_cover">Borító</string>
+    <string name="edit_save">Mentés</string>
+    <string name="edit_saved">Megjegyeztem.</string>
     <string name="about_licenses">Licencek</string>
     <string name="about_license_ytdlp">yt-dlp · Unlicense</string>
     <string name="about_license_ytdl_android">youtubedl-android · GPL-3.0</string>
     <string name="about_license_ffmpeg">FFmpeg · LGPL / GPL</string>
     <string name="about_license_python">Python · PSF</string>
+    <string name="about_license_mutagen">mutagen · GPL-2.0+</string>
     <string name="about_license_quickjs">QuickJS · MIT</string>
     <string name="about_license_fonts">Fraunces, Nunito · OFL 1.1</string>
     <string name="about_license_compose">Jetpack Compose, AndroidX · Apache 2.0</string>

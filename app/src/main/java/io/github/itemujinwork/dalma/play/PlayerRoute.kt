@@ -1,8 +1,10 @@
 package io.github.itemujinwork.dalma.play
 
 import android.app.Activity
+import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -34,6 +36,7 @@ import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
 import io.github.itemujinwork.dalma.data.MusicStore
+import io.github.itemujinwork.dalma.data.SongTags
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.data.SongList
 import io.github.itemujinwork.dalma.home.AboutCard
@@ -46,6 +49,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Something made once for the screen and let go when the screen goes: the player's controller.
@@ -76,6 +80,16 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     val scope = rememberCoroutineScope()
     val playback = rememberForScreen(make = { Playback.connect(context) }, release = Playback::release)
     val state = playback?.state?.collectAsStateWithLifecycle()?.value ?: PlaybackState()
+    val mascot = rememberMascotState(arriving = true)
+    val sorryMascot = rememberMascotState()
+    val sky = rememberSkyState()
+    val evening = remember { isLateEvening() }
+
+    // What was typed into a song shows at once; the folder's next read carries it from the file itself.
+    var retouched by remember { mutableStateOf<Map<Long, Pair<String, String?>>>(emptyMap()) }
+    LaunchedEffect(songs) { retouched = emptyMap() }
+    @Suppress("NAME_SHADOWING")
+    val songs = remember(songs, retouched) { if (retouched.isEmpty()) songs else songs.map { s -> retouched[s.id]?.let { (t, a) -> s.copy(title = t, artist = a) } ?: s } }
 
     // The folder's order, or the one a long press shuffled (the playing song first).
     var shuffleOrder by remember { mutableStateOf<List<Long>?>(null) }
@@ -95,7 +109,8 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
 
     // The previous song's cover and colours stay until the new ones are read, so the colours cross-fade.
     var art by remember { mutableStateOf<Art?>(null) }
-    LaunchedEffect(song.id) {
+    var coverVersion by remember { mutableIntStateOf(0) }
+    LaunchedEffect(song.id, coverVersion) {
         art = withContext(Dispatchers.IO) {
             val bitmap = folder.cover(song, COVER_PX)
             Art(song.id, bitmap?.asImageBitmap(), SongColors.of(bitmap, song.artist))
@@ -149,19 +164,19 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         pendingListEdit = null
         if (result.resultCode == Activity.RESULT_OK && retry != null) retry() else listsVersion++
     }
-    // A list file changes off the main thread; a file someone else put there changes only with Android's consent, then the same edit runs again.
-    fun editList(run: () -> MusicStore.ListEdit, onDone: () -> Unit = {}) {
+    // A file changes off the main thread; a file someone else put there changes only with Android's consent, then the same edit runs again.
+    fun editFile(run: suspend () -> MusicStore.Edit, onDone: () -> Unit = {}) {
         scope.launch {
             when (val edit = withContext(Dispatchers.IO) { run() }) {
-                MusicStore.ListEdit.Done -> {
+                MusicStore.Edit.Done -> {
                     onDone()
                     listsVersion++
                 }
-                is MusicStore.ListEdit.NeedsConsent -> {
-                    pendingListEdit = { editList(run, onDone) }
+                is MusicStore.Edit.NeedsConsent -> {
+                    pendingListEdit = { editFile(run, onDone) }
                     listConsent.launch(IntentSenderRequest.Builder(edit.intentSender).build())
                 }
-                MusicStore.ListEdit.Failed -> listsVersion++
+                MusicStore.Edit.Failed -> listsVersion++
             }
         }
     }
@@ -170,8 +185,76 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         searchOpen = false
         query = ""
     }
-    BackHandler(enabled = listOpen) {
+
+    // Editing: a double tap opens the song's title, artist and cover for changing; a save writes them into the file.
+    val tags = remember { SongTags(context) }
+    var edit by remember { mutableStateOf<EditUi?>(null) }
+    var editCoverFile by remember { mutableStateOf<File?>(null) }
+    var saved by remember { mutableStateOf(false) }
+    fun editRequest(target: Song) {
+        val shown = target.id == song.id
+        listOpen = false
+        closeSearch()
+        openRowId = null
+        renaming = null
+        editCoverFile?.delete()
+        editCoverFile = null
+        val shownPalette = (shownArt ?: art)?.palette ?: SongPalette.fromArtist(song.artist)
+        edit = EditUi(target, target.title, target.artist.orEmpty(), if (shown) (shownArt ?: art)?.cover else thumbs[target.id], if (shown) shownPalette else SongPalette.fromArtist(target.artist))
+        if (!shown) {
+            scope.launch {
+                val bitmap = withContext(Dispatchers.IO) { folder.cover(target, COVER_PX) }
+                edit = edit?.takeIf { it.song.id == target.id }?.copy(cover = bitmap?.asImageBitmap(), palette = SongColors.of(bitmap, target.artist))
+            }
+        }
+    }
+    fun discardEdit() {
+        edit = null
+        editCoverFile?.delete()
+        editCoverFile = null
+    }
+    val pickCover = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { picked ->
+        if (picked != null) {
+            scope.launch {
+                val file = withContext(Dispatchers.IO) { tags.squareJpeg(picked) } ?: return@launch
+                val bitmap = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(file.path) } ?: return@launch
+                editCoverFile?.delete()
+                editCoverFile = file
+                edit = edit?.let { it.copy(cover = bitmap.asImageBitmap(), palette = SongColors.of(bitmap, it.artist)) }
+            }
+        }
+    }
+    fun saveEdit() {
+        val current = edit ?: return
+        val title = current.title.trim().ifEmpty { current.song.title }
+        val artist = current.artist.trim().ifEmpty { null }
+        val cover = editCoverFile
+        edit = null
+        editCoverFile = null
+        retouched = retouched + (current.song.id to (title to artist))
+        if (cover != null && current.song.id == song.id) art = Art(song.id, current.cover, current.palette)
+        scope.launch {
+            // The fields go (200 ms) and the cover grows back (500 ms); then the word under the line and the clip.
+            delay(700)
+            saved = true
+            launch { mascot.noteTaken() }
+            delay(1_500)
+            saved = false
+        }
+        editFile({
+            val written = tags.write(current.song, title, artist, cover)
+            if (written == MusicStore.Edit.Failed) withContext(Dispatchers.Main) { retouched = retouched - current.song.id }
+            written
+        }) {
+            thumbs.remove(current.song.id)
+            coverVersion++
+            cover?.delete()
+            onFolderChanged()
+        }
+    }
+    BackHandler(enabled = listOpen || edit != null) {
         when {
+            edit != null -> discardEdit()
             deleting != null -> deleting = null
             deletingList != null -> deletingList = null
             renaming != null -> renaming = null
@@ -210,10 +293,6 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         }
     }
 
-    val mascot = rememberMascotState(arriving = true)
-    val sorryMascot = rememberMascotState()
-    val sky = rememberSkyState()
-    val evening = remember { isLateEvening() }
 
     // The opening, to the sheet's clock: Dalma big, the greeting, a second of air, then into the
     // corner while the sky, the cover, the texts and the line come in one after the other; from
@@ -334,7 +413,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                 lists.firstOrNull { it.name == name }?.let { target ->
                     val entries = Lists.toggled(target.entries, entryOf(song))
                     // The last song out takes the list with it: no list is empty.
-                    editList({ if (entries.isEmpty()) store.deleteList(target.uri) else store.writeList(target.uri, M3u.write(entries)) }) {
+                    editFile({ if (entries.isEmpty()) store.deleteList(target.uri) else store.writeList(target.uri, M3u.write(entries)) }) {
                         if (entries.isEmpty() && selectedList == name) selectedList = null
                     }
                 }
@@ -344,8 +423,8 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                 if (fileName != null) {
                     val existing = lists.firstOrNull { it.fileName.equals(fileName, ignoreCase = true) }
                     when {
-                        existing == null -> editList({ if (store.createList(fileName, M3u.write(listOf(entryOf(song)))) != null) MusicStore.ListEdit.Done else MusicStore.ListEdit.Failed })
-                        !Lists.contains(existing.entries, song.fileName) -> editList({ store.writeList(existing.uri, M3u.write(Lists.toggled(existing.entries, entryOf(song)))) })
+                        existing == null -> editFile({ if (store.createList(fileName, M3u.write(listOf(entryOf(song)))) != null) MusicStore.Edit.Done else MusicStore.Edit.Failed })
+                        !Lists.contains(existing.entries, song.fileName) -> editFile({ store.writeList(existing.uri, M3u.write(Lists.toggled(existing.entries, entryOf(song)))) })
                     }
                 }
             },
@@ -361,16 +440,17 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
                     target == null -> Unit
                     fileName == null -> deletingList = old
                     fileName == target.fileName -> Unit
-                    else -> editList({ store.renameList(target.uri, fileName) }) { if (selectedList == old) selectedList = M3u.nameOf(fileName) }
+                    else -> editFile({ store.renameList(target.uri, fileName) }) { if (selectedList == old) selectedList = M3u.nameOf(fileName) }
                 }
             },
             onDeleteListConfirm = { name ->
                 deletingList = null
                 lists.firstOrNull { it.name == name }?.let { target ->
-                    editList({ store.deleteList(target.uri) }) { if (selectedList == name) selectedList = null }
+                    editFile({ store.deleteList(target.uri) }) { if (selectedList == name) selectedList = null }
                 }
             },
             onDeleteListCancel = { deletingList = null },
+            onEditRequest = ::editRequest,
             onOpenWithSearch = {
                 listOpen = true
                 searchOpen = true
@@ -405,6 +485,20 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         onMascotLongPress = {
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             showAbout = true
+        },
+        edit = edit,
+        editActions = EditActions(
+            onTitle = { typed -> edit = edit?.copy(title = typed) },
+            onArtist = { typed -> edit = edit?.copy(artist = typed) },
+            onPickCover = { pickCover.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onSave = ::saveEdit,
+            onDiscard = ::discardEdit,
+        ),
+        saved = saved,
+        onEditRequest = {
+            // The first tap already played or paused; the second within 300 ms takes that back and opens editing.
+            if (queued) playback?.playPause()
+            editRequest(song)
         },
     )
     if (showAbout) AboutCard(update = update, onDismiss = { showAbout = false })

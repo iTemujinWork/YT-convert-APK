@@ -63,6 +63,9 @@ private val HAIR_PIVOT = Offset(120f, 100.8f)
 private val FRINGE_PIVOT = Offset(120f, 48f)
 private val LEAN_PIVOT = Offset(72f, 240f)
 
+/** The hair clip is drawn tilted 7° about this point (the files' rotate(-7 131 54)); turned back by 7° it stands straight. */
+private val CLIP_PIVOT = Offset(157.2f, 64.8f)
+
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
 /** Time-driven values that are not part of the state: the sheet's breathing, a slow drift for twinkles, and the designer's idle motion this frame. */
@@ -291,6 +294,7 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
                 withTransform({
                     translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
                     scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
+                    rotate(7f * state.clipStraight.value, pivot = CLIP_PIVOT)
                 }) {
                     drawLayer("clip")
                     state.clipFill?.let { drawClipFill(it, clock.shine) }

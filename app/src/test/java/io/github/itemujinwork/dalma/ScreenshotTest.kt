@@ -29,6 +29,7 @@ import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.play.ListActions
 import io.github.itemujinwork.dalma.play.ListUi
+import io.github.itemujinwork.dalma.play.EditUi
 import io.github.itemujinwork.dalma.play.PlayerScreen
 import io.github.itemujinwork.dalma.share.ShareSheetContent
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
@@ -156,6 +157,8 @@ class ScreenshotTest {
         list: ListUi = ListUi(),
         sorry: MascotState = mascot(),
         state: MascotState = mascot(),
+        edit: EditUi? = null,
+        saved: Boolean = false,
     ) = shot(name) {
         PlayerScreen(
             song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "$title.opus", title = title, artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
@@ -178,8 +181,18 @@ class ScreenshotTest {
             onLongPress = {},
             onSeek = {},
             onMascotLongPress = {},
+            edit = edit,
+            saved = saved,
         )
     }
+
+    /** Editing: the cover small at the top, the three rows and the "Mentés" pill, as the sheet draws them. */
+    @Test
+    fun player_edit() = player("player_edit", cover = fakeCover(), edit = EditUi(sampleSongs[0], "Hajnali vonat", "Kóbor Lámpás", fakeCover(), sunrise))
+
+    /** Just saved: "Megjegyeztem." under the line and Dalma's clip standing straight. */
+    @Test
+    fun player_saved() = player("player_saved", cover = fakeCover(), saved = true, state = mascot { noteTakenStill() })
 
     @Test
     fun list_rows() = player("list_rows", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, lists = listOf("YouTube Mix", "Futás", "Este")))

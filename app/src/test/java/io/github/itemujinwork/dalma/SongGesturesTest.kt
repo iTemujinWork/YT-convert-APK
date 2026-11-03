@@ -36,6 +36,7 @@ class SongGesturesTest {
         var taps = 0
         val swipes = mutableListOf<Int>()
         var ups = 0
+        var doubles = 0
         var longPresses = 0
         var pullStarts = 0
         var pulled = 0f
@@ -48,6 +49,7 @@ class SongGesturesTest {
             Box(
                 Modifier.size(300.dp).songGestures(
                     onTap = { calls.taps++ },
+                    onDoubleTap = { calls.doubles++ },
                     onSwipe = { calls.swipes += it },
                     onSwipeUp = { calls.ups++ },
                     onLongPress = { calls.longPresses++ },
@@ -89,10 +91,28 @@ class SongGesturesTest {
         compose.onRoot().performTouchInput { click(center) }
         compose.waitForIdle()
         playing = true
+        compose.mainClock.advanceTimeBy(400) // past the double tap's window
         compose.waitForIdle()
         compose.onRoot().performTouchInput { click(center) }
         compose.waitForIdle()
         assertEquals(listOf(false, true), seen)
+    }
+
+    /** A second tap within 300 ms is a double tap on top of the first, which acted already: the caller takes it back. */
+    @Test
+    fun aSecondTapWithinTheWindowIsADoubleTap() {
+        val calls = screen()
+        compose.onRoot().performTouchInput { click(center) }
+        compose.mainClock.advanceTimeBy(100)
+        compose.onRoot().performTouchInput { click(center) }
+        compose.waitForIdle()
+        assertEquals(1, calls.taps)
+        assertEquals(1, calls.doubles)
+        compose.mainClock.advanceTimeBy(400)
+        compose.onRoot().performTouchInput { click(center) }
+        compose.waitForIdle()
+        assertEquals("a lone tap later is a tap again", 2, calls.taps)
+        assertEquals(1, calls.doubles)
     }
 
     @Test

@@ -108,6 +108,9 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
     val drop = Animatable(0f)
     val zz = Animatable(0f)
 
+    /** The hair clip standing straight: 0 as drawn (tilted 7°), 1 upright, for "Megjegyeztem.". */
+    val clipStraight = Animatable(0f)
+
     /** The designer's idle motion she follows now (`null`: the sheet's old breathing), cross-fading from the one before. */
     var idle by mutableStateOf<IdleMotion?>(null)
         private set
@@ -365,6 +368,16 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
             launch { tilt.go(0f, tween(800, easing = FastOutSlowInEasing)) }
         }
     }
+
+    /** "Megjegyeztem.": the hair clip stands straight (300 ms), stays while the word shows (1.2 s), then slides back. */
+    suspend fun noteTaken() {
+        clipStraight.go(1f, tween(300, easing = FastOutSlowInEasing))
+        delay(1_200)
+        clipStraight.go(0f, tween(300, easing = FastOutSlowInEasing))
+    }
+
+    /** The same, held: for screenshots. */
+    suspend fun noteTakenStill() = clipStraight.snapTo(1f)
 
     /** Eyes close fast and open a little slower, like real ones. */
     suspend fun blink(deep: Boolean = false) {

@@ -253,11 +253,15 @@ class Engine(context: Context) {
      * Runs yt-dlp with [args]; every stdout line goes to [onLine] as it arrives. Cancelling
      * the coroutine, or throwing [Abort] from [onLine], kills yt-dlp and its children.
      */
-    suspend fun run(args: List<String>, onLine: (String) -> Unit): RunResult = withContext(Dispatchers.IO) {
+    suspend fun run(args: List<String>, onLine: (String) -> Unit): RunResult = execute(listOf(ytDlp.absolutePath) + standardArgs + args, onLine)
+
+    /** Runs a few lines of Python ([source]) with [args] on the engine's interpreter, where mutagen sits next to yt-dlp. */
+    suspend fun runPython(source: String, args: List<String>): RunResult = execute(listOf("-c", source) + args) {}
+
+    private suspend fun execute(program: List<String>, onLine: (String) -> Unit): RunResult = withContext(Dispatchers.IO) {
         if (!python.canExecute()) throw IOException("python is missing from ${nativeDir.path}")
         // The shell prints its own pid, then becomes python; that pid lets us kill the tree.
-        val command = listOf("/system/bin/sh", "-c", "echo $$; exec \"$@\"", "dalma", python.absolutePath, ytDlp.absolutePath) +
-            standardArgs + args
+        val command = listOf("/system/bin/sh", "-c", "echo $$; exec \"$@\"", "dalma", python.absolutePath) + program
         val process = ProcessBuilder(command).directory(workDir).also { it.environment().putAll(environment) }.start()
         val pid = AtomicInteger(-1)
         val stderr = BoundedText(headChars = 8_000, tailLines = 300)
