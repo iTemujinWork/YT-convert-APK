@@ -13,10 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import io.github.itemujinwork.dalma.core.IdleMotion
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -25,6 +27,28 @@ import kotlin.random.Random
 
 /** The faces Dalma can make: the last two with closed eyes, listening at night and asleep against the wall. */
 enum class Expression { NEUTRAL, HAPPY, SORRY, SLEEPY, NIGHT, ASLEEP }
+
+/** What an idle motion says at one instant, in the 240 box: the figure's rise, the swings of the head, the back hair and the fringe, and how much of it is on. */
+internal class IdlePose(val rise: Float, val head: Float, val hair: Float, val fringe: Float, val weight: Float) {
+    fun mix(to: IdlePose, t: Float) = IdlePose(rise + (to.rise - rise) * t, head + (to.head - head) * t, hair + (to.hair - hair) * t, fringe + (to.fringe - fringe) * t, weight + (to.weight - weight) * t)
+    fun minus(other: IdlePose) = IdlePose(rise - other.rise, head - other.head, hair - other.hair, fringe - other.fringe, 0f)
+    fun plus(other: IdlePose, times: Float) = IdlePose(rise + other.rise * times, head + other.head * times, hair + other.hair * times, fringe + other.fringe * times, weight)
+
+    companion object {
+        val STILL = IdlePose(0f, 0f, 0f, 0f, 0f)
+
+        /** The pose files are 200 points across, Dalma's box 240. */
+        private const val POINT = 240f / 200f
+
+        fun of(motion: IdleMotion?, millis: Long): IdlePose = if (motion == null) STILL else IdlePose(
+            rise = motion.rise * motion.wave(millis) * POINT,
+            head = motion.swing(motion.head, millis),
+            hair = motion.swing(motion.hair, millis, motion.hairLagMillis),
+            fringe = motion.swing(motion.fringe, millis, motion.fringeLagMillis),
+            weight = 1f,
+        )
+    }
+}
 
 /**
  * Everything that moves on Dalma, plus the little choreographies (greeting, turning,
@@ -83,6 +107,29 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
     val sparkles = Animatable(0f)
     val drop = Animatable(0f)
     val zz = Animatable(0f)
+
+    /** The designer's idle motion she follows now (`null`: the sheet's old breathing), cross-fading from the one before. */
+    var idle by mutableStateOf<IdleMotion?>(null)
+        private set
+    var previousIdle by mutableStateOf<IdleMotion?>(null)
+        private set
+
+    /** 0..1 cross-fade from [previousIdle] to [idle]. */
+    val idleBlend = Animatable(1f)
+
+    /** The idle motions' clock, run by the composable while one is on. */
+    var idleMillis by mutableLongStateOf(0L)
+        internal set
+
+    /** Where she was when the motion last changed, less where the one before would have her: it fades out with the blend, so no switch jumps. */
+    private var idleJump by mutableStateOf(IdlePose.STILL)
+
+    /** Her idle pose this instant: the motion she follows, cross-faded from the one before; still when motion is off. */
+    internal fun idlePose(): IdlePose {
+        if (reducedMotion) return IdlePose.STILL
+        val t = idleBlend.value
+        return IdlePose.of(previousIdle, idleMillis).mix(IdlePose.of(idle, idleMillis), t).plus(idleJump, 1f - t)
+    }
 
     var expression by mutableStateOf(Expression.NEUTRAL)
         private set
@@ -183,6 +230,16 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
+    suspend fun setIdle(next: IdleMotion?, millis: Int = 600) {
+        if (next === idle) return
+        val here = idlePose()
+        previousIdle = idle
+        idle = next
+        idleJump = here.minus(IdlePose.of(previousIdle, idleMillis))
+        idleBlend.snapTo(0f)
+        idleBlend.go(1f, tween(millis, easing = FastOutSlowInEasing))
+    }
+
     /** She appears: 0 → 1 opacity and 0.96 → 1 scale over 600 ms, as the sheet's opening has it. */
     suspend fun arrive() {
         if (reducedMotion) {
@@ -234,12 +291,13 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
-    /** Late at night she is found asleep against the wall: leaning, eyes closed, a few z's. */
+    /** Late at night, with nothing to hear, she leans on the wall and sleeps: alszik-fal.svg, sinking and rising 1.8 points. */
     suspend fun sleepAtWall() {
         coroutineScope {
             launch { setExpression(Expression.ASLEEP, 600) }
             launch { lean.go(-9f, tween(900, easing = FastOutSlowInEasing)) }
             launch { tilt.go(-10f, tween(900, easing = FastOutSlowInEasing)) }
+            launch { setIdle(IdleMotion.ASLEEP, 900) }
         }
     }
 
@@ -251,25 +309,60 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         expression = Expression.ASLEEP
         expressionBlend.snapTo(1f)
         zz.snapTo(1f)
+        previousIdle = null
+        idle = IdleMotion.ASLEEP
+        idleJump = IdlePose.STILL
+        idleBlend.snapTo(1f)
     }
 
-    /** The night's greeting instead of the wink: she straightens up from the wall, eyes half open, a soft smile, then awake. */
+    /** The night's greeting instead of the wink: she straightens up from the wall, eyes half open, a soft smile, then awake and breathing. */
     suspend fun wakeUp() {
         if (reducedMotion) {
             lean.snapTo(0f)
             tilt.snapTo(0f)
             setExpression(Expression.NEUTRAL)
+            setIdle(IdleMotion.BREATHE)
             return
         }
         coroutineScope {
             launch { lean.animateTo(0f, tween(800, easing = FastOutSlowInEasing)) }
             launch { tilt.animateTo(0f, tween(800, easing = FastOutSlowInEasing)) }
+            launch { setIdle(IdleMotion.BREATHE, 800) }
             launch {
                 delay(300)
                 setExpression(Expression.SLEEPY, 250)
                 delay(450)
                 setExpression(Expression.NEUTRAL, 200)
             }
+        }
+    }
+
+    /** Standing, as alap.svg draws her: eyes open, breathing, and straight (off the wall, if she leaned on it). */
+    suspend fun stand() {
+        coroutineScope {
+            launch { setExpression(Expression.NEUTRAL, 400) }
+            launch { straighten() }
+            launch { setIdle(IdleMotion.BREATHE) }
+        }
+    }
+
+    /**
+     * Listening in the player's corner: by day with open eyes and the livelier sway of hallgat.svg,
+     * at night with closed eyes and the gentle one of hallgat-este.svg.
+     */
+    suspend fun listen(night: Boolean) {
+        coroutineScope {
+            launch { setExpression(if (night) Expression.NIGHT else Expression.NEUTRAL, 600) }
+            launch { straighten() }
+            launch { setIdle(if (night) IdleMotion.LISTEN_NIGHT else IdleMotion.LISTEN_DAY) }
+        }
+    }
+
+    private suspend fun straighten() {
+        if (lean.value == 0f && tilt.value == 0f) return
+        coroutineScope {
+            launch { lean.go(0f, tween(800, easing = FastOutSlowInEasing)) }
+            launch { tilt.go(0f, tween(800, easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -323,16 +416,26 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
-    /** Breathing, blinking, a slow sway, the occasional glance: runs until cancelled. */
-    suspend fun live(sleepy: Boolean) {
+    /** Blinks at her own pace, now and then twice; runs until cancelled. */
+    suspend fun blinking() {
+        if (reducedMotion || images != null) return
+        while (true) {
+            delay(Random.nextLong(2_400, 6_800))
+            blink()
+            if (Random.nextFloat() < 0.18f) {
+                delay(160)
+                blink()
+            }
+        }
+    }
+
+    /** The empty screen's day: blinking, a slow drift of the head, the occasional glance; runs until cancelled. */
+    suspend fun live() {
         if (reducedMotion) return
         if (images != null) {
             try {
                 while (true) {
-                    val loop = play(if (sleepy) "almos" else "pislog", loop = true)
-                    if (!loop || sleepy) {
-                        delay(Long.MAX_VALUE)
-                    }
+                    if (!play("pislog", loop = true)) delay(Long.MAX_VALUE)
                     delay(Random.nextLong(9_000, 22_000))
                     stopClip()
                     lookAround()
@@ -342,30 +445,19 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
             }
         }
         coroutineScope {
+            launch { blinking() }
             launch {
+                // The head drifts gently from side to side, never the same twice.
                 while (true) {
-                    delay(Random.nextLong(if (sleepy) 3_500 else 2_400, if (sleepy) 9_000 else 6_800))
-                    blink(deep = sleepy && Random.nextFloat() < 0.5f)
-                    if (!sleepy && Random.nextFloat() < 0.18f) {
-                        delay(160)
-                        blink()
-                    }
-                }
-            }
-            launch {
-                // Listening to music: the head drifts gently from side to side, never the same twice.
-                while (true) {
-                    val target = (Random.nextFloat() * 2f - 1f) * (if (sleepy) 2.2f else 1.3f)
+                    val target = (Random.nextFloat() * 2f - 1f) * 1.3f
                     sway.animateTo(target, tween(Random.nextInt(2_800, 4_600), easing = FastOutSlowInEasing))
                     delay(Random.nextLong(300, 1_400))
                 }
             }
-            if (!sleepy) {
-                launch {
-                    while (true) {
-                        delay(Random.nextLong(7_000, 19_000))
-                        lookAround()
-                    }
+            launch {
+                while (true) {
+                    delay(Random.nextLong(7_000, 19_000))
+                    lookAround()
                 }
             }
         }

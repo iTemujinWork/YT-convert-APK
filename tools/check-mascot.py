@@ -12,7 +12,7 @@ import xml.etree.ElementTree as ET
 
 NS = "{http://www.w3.org/2000/svg}"
 REQUIRED = [
-    "hair_back", "body", "head", "blush", "nose", "hair_front", "clip",
+    "hair_back", "body", "head", "fringe_shadow", "blush", "nose", "hair_cap", "hair_front", "clip", "face_clip",
     "eye_l_open", "eye_r_open", "eye_l_closed", "eye_r_closed",
     "eye_l_happy", "eye_r_happy", "eye_l_sleepy", "eye_r_sleepy",
     "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry",

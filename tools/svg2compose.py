@@ -26,8 +26,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SOURCE = os.path.join(ROOT, "docs", "mascot", "dalma.svg")
 KOTLIN_OUT = os.path.join(ROOT, "app", "src", "main", "java", "io", "github", "itemujinwork", "dalma", "ui", "mascot", "MascotArt.kt")
 DRAWABLE_DIR = os.path.join(ROOT, "app", "src", "main", "res", "drawable")
-ICON_LAYERS = ["hair_back", "body", "head", "blush", "nose", "mouth_smile", "eye_l_open", "eye_r_open", "brow_l", "brow_r", "hair_front", "clip"]
-SILHOUETTE_LAYERS = ["hair_back", "body", "head", "hair_front"]
+ICON_LAYERS = ["hair_back", "body", "head", "fringe_shadow", "blush", "nose", "mouth_smile", "eye_l_open", "eye_r_open", "brow_l", "brow_r", "hair_cap", "hair_front", "clip"]
+SILHOUETTE_LAYERS = ["hair_back", "body", "head", "hair_cap", "hair_front"]
 
 
 def num(value):

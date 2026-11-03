@@ -19,7 +19,12 @@ import kotlin.coroutines.resumeWithException
 /** What a screen needs to know: which song, whether it plays, and how long it is. */
 data class PlaybackState(
     val songId: Long? = null,
+    /** Sound is coming out right now. */
     val playing: Boolean = false,
+    /** It is meant to play: so too while it buffers for a moment, so the screen does not flinch; not once the list has ended. */
+    val wantsToPlay: Boolean = false,
+    /** The last song is over and nothing follows. */
+    val ended: Boolean = false,
     val durationMillis: Long = 0L,
 )
 
@@ -51,6 +56,8 @@ class Playback private constructor(private val controller: MediaController) {
         mutableState.value = PlaybackState(
             songId = controller.currentMediaItem?.mediaId?.toLongOrNull(),
             playing = controller.isPlaying,
+            wantsToPlay = controller.playWhenReady && (controller.playbackState == Player.STATE_READY || controller.playbackState == Player.STATE_BUFFERING),
+            ended = controller.playbackState == Player.STATE_ENDED,
             durationMillis = controller.duration.takeIf { it > 0 } ?: 0L,
         )
     }

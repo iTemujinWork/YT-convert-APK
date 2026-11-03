@@ -3,8 +3,10 @@
 Builds the layered mascot source (docs/mascot/dalma.svg, 240 x 240) from the designer's
 pose files (docs/spec/0.2.0/design/dalma/*.svg, 200 x 200). alap.svg is the base; örül,
 álmos, hallgat-este and bocsánat lend their eyes, brows, mouths, sparkles, zz and the drop.
-Transforms are baked into the coordinates, clip paths are dropped, everything is scaled by
-1.2. Then run tools/svg2compose.py as usual.
+Transforms are baked into the coordinates, everything is scaled by 1.2. The fringe's shadow
+gets a layer of its own (it swings with the fringe) and the face's inner outline that cuts it
+in the files is kept as face_clip, so the app can cut it the same way. Then run
+tools/svg2compose.py as usual.
 
   python3 tools/poses2mascot.py
 """
@@ -20,14 +22,16 @@ NS = "{http://www.w3.org/2000/svg}"
 SCALE = 240 / 200
 KEEP = ("fill", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "opacity", "fill-opacity", "stroke-opacity")
 ORDER = [
-    "hair_back", "body", "head", "blush", "nose",
+    "hair_back", "body", "head", "fringe_shadow", "blush", "nose",
     "mouth_smile", "mouth_happy", "mouth_sorry", "mouth_sleepy",
     "eye_l_open", "eye_l_closed", "eye_l_happy", "eye_l_sleepy",
     "eye_r_open", "eye_r_closed", "eye_r_happy", "eye_r_sleepy",
     "brow_l", "brow_r", "brow_l_sorry", "brow_r_sorry", "brow_l_wink", "brow_r_wink", "brow_l_asleep", "brow_r_asleep",
     "eye_l_wink", "eye_r_wink", "mouth_night", "mouth_asleep",
-    "hair_front", "clip", "drop", "sparkles", "zz",
+    "hair_cap", "hair_front", "clip", "drop", "sparkles", "zz", "face_clip",
 ]
+# The files cut the fringe's shadow to this: the face's inner outline.
+FACE_CLIP = "faceClipF"
 
 
 _GLYPHS = {}
@@ -89,20 +93,24 @@ def shapes_of(path):
     out = []
     counter = [0]
 
-    def walk(node, m, group):
+    def walk(node, m, group, clipdef=False):
         for child in node:
             tag = child.tag.replace(NS, "")
-            if tag in ("defs", "clipPath", "animate", "animateTransform", "title", "desc"):
-                continue  # the designer's own idle motion; the app animates on its own
+            if tag in ("defs", "animate", "animateTransform", "title", "desc"):
+                continue  # the designer's own idle motion; the app animates on its own (core/IdleMotion)
+            if tag == "clipPath":
+                if child.get("id") == FACE_CLIP:
+                    walk(child, m, group, clipdef=True)  # kept as an outline the app clips with, drawn with nothing
+                continue
             if tag == "g":
                 gid = group
                 if gid is None:
                     gid = counter[0]; counter[0] += 1
                 t = child.get("transform")
-                walk(child, matrix(t) if t and t not in skipped else m, gid)
+                walk(child, matrix(t) if t and t not in skipped else m, gid, clipdef)
                 continue
             clipped = child.get("clip-path") is not None  # the fringe's shadow, clipped to the face in the file
-            attrs = {k: child.get(k) for k in KEEP if child.get(k) is not None}
+            attrs = {"fill": "none"} if clipdef else {k: child.get(k) for k in KEEP if child.get(k) is not None}
             if "fill" not in attrs:  # SVG's default fill is black; a stroke-only line means none
                 attrs["fill"] = "none" if attrs.get("stroke") else "#000000"
             if "stroke-width" in attrs:
@@ -117,7 +125,7 @@ def shapes_of(path):
                         d.append(t); i += 1
                     else:
                         x, y = apply(m, float(t), float(tokens[i + 1])); pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}"); i += 2
-                out.append({"tag": "path", "key": key, "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group, "clipped": clipped})
+                out.append({"tag": "path", "key": key, "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group, "clipped": clipped, "clipdef": clipdef})
             elif tag in ("ellipse", "circle"):
                 x, y = apply(m, float(child.get("cx")), float(child.get("cy")))
                 rx = float(child.get("rx") or child.get("r")) * SCALE
@@ -181,8 +189,10 @@ def base_layers(shapes):
     stage = "body"
     for s in shapes:
         cx, cy, width = centre(s)
+        if s.get("clipdef"):
+            layers["face_clip"].append(s); continue
         if s.get("clipped"):
-            layers["head"].append(s); continue  # drawn right over the face, under the fringe that hides the rest
+            layers["fringe_shadow"].append(s); continue  # right over the face, under the brows; it swings with the fringe
         # The hair clip sits inside the fringe group: the mint triangle and its white tick, high on the right.
         if cy < 70 and cx > 110 and (s["attrs"].get("fill") == "#8FD3BE" or s["attrs"].get("stroke") == "#F4FBF8"):
             if s["attrs"].get("fill") == "#8FD3BE" and not any(t.get("id") == "clip_shape" for t in layers["clip"]):
@@ -198,7 +208,7 @@ def base_layers(shapes):
             else:
                 layers["body"].append(s)
         elif stage == "hair":
-            layers["hair_front"].append(s)
+            layers["hair_cap"].append(s)  # the top of the hair, on the skull: it goes with the head, not the fringe
         else:
             if s["attrs"].get("fill") == "#F2B3A6":
                 layers["blush"].append(s)

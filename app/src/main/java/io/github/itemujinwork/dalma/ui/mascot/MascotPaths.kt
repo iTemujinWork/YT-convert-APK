@@ -37,6 +37,9 @@ internal object MascotPaths {
     val clip: Path by lazy { PathParser().parsePathString(MascotArt.CLIP_SHAPE).toPath() }
     val clipBounds: Rect by lazy { clip.getBounds() }
 
+    /** The face's inner outline from the pose files: the fringe's shadow is cut to it, as their clip-path does. */
+    val faceClip: Path by lazy { layer("face_clip").firstOrNull()?.path ?: Path() }
+
     fun layer(name: String): List<MascotShape> = layers[name].orEmpty()
 
     private fun MascotArt.Shape.toShape(layerName: String): MascotShape {

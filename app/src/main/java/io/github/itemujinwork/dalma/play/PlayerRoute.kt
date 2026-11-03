@@ -25,6 +25,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import kotlinx.coroutines.coroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.itemujinwork.dalma.core.IdleMotion
 import io.github.itemujinwork.dalma.core.Shuffle
 import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.SongPalette
@@ -33,7 +34,6 @@ import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.data.SongList
 import io.github.itemujinwork.dalma.home.AboutCard
 import io.github.itemujinwork.dalma.home.isLateEvening
-import io.github.itemujinwork.dalma.ui.mascot.Expression
 import io.github.itemujinwork.dalma.ui.mascot.rememberMascotState
 import io.github.itemujinwork.dalma.ui.rememberSkyState
 import io.github.itemujinwork.dalma.update.AppUpdateCheck
@@ -172,18 +172,18 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     val evening = remember { isLateEvening() }
 
     // The opening, to the sheet's clock: Dalma big, the greeting, a second of air, then into the
-    // corner while the sky, the cover, the texts and the line come in one after the other, and in
-    // the corner the greeting figure becomes the listening one (eyes closed at night).
+    // corner while the sky, the cover, the texts and the line come in one after the other; from
+    // 4200 ms the corner is hers (the greeting figure becomes the listening one, below).
     val intro = remember { Intro() }
+    var inTheCorner by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (mascot.reducedMotion) {
             intro.finish()
             mascot.closeness.snapTo(1f)
-            if (evening) mascot.setExpression(Expression.NIGHT)
-            mascot.live(sleepy = evening)
+            inTheCorner = true
             return@LaunchedEffect
         }
-        if (evening) mascot.sleepAtWallStill()
+        if (evening) mascot.sleepAtWallStill() else mascot.setIdle(IdleMotion.BREATHE)
         mascot.arrive()
         delay((StartTimeline.greet.startMillis - StartTimeline.appear.endMillis).toLong())
         if (evening) mascot.wakeUp() else mascot.greet()
@@ -195,9 +195,31 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
             launch { delay((StartTimeline.cover.startMillis - t0).toLong()); intro.cover.animateTo(1f, tween(StartTimeline.cover.durationMillis, easing = DalmaEase)) }
             launch { delay((StartTimeline.texts.startMillis - t0).toLong()); intro.texts.animateTo(1f, tween(StartTimeline.texts.durationMillis, easing = DalmaEase)) }
             launch { delay((StartTimeline.line.startMillis - t0).toLong()); intro.line.animateTo(1f, tween(StartTimeline.line.durationMillis, easing = DalmaEase)) }
-            launch { delay((StartTimeline.listen.startMillis - t0).toLong()); if (evening) mascot.setExpression(Expression.NIGHT, StartTimeline.listen.durationMillis) }
+            launch { delay((StartTimeline.listen.startMillis - t0).toLong()); inTheCorner = true }
         }
-        mascot.live(sleepy = evening)
+    }
+    // In the corner she follows the music and the clock (the brief's table of her states): listening
+    // while it plays — by day with open eyes and the livelier sway, at night with closed eyes and the
+    // gentle one —, standing, breathing and blinking when it is stopped (eyes open even at night), and
+    // late at night with nothing playing she listens a while with closed eyes, then leans on the wall and sleeps.
+    val silent = !queued || state.ended
+    LaunchedEffect(inTheCorner, state.wantsToPlay, silent, evening) {
+        if (!inTheCorner) return@LaunchedEffect
+        when {
+            state.wantsToPlay -> {
+                mascot.listen(night = evening)
+                if (!evening) mascot.blinking()
+            }
+            evening && silent -> {
+                mascot.listen(night = true)
+                delay(DOZE_OFF_MILLIS)
+                mascot.sleepAtWall()
+            }
+            else -> {
+                mascot.stand()
+                mascot.blinking()
+            }
+        }
     }
     LaunchedEffect(deleting != null) {
         if (deleting != null) {
@@ -213,7 +235,7 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         song = song,
         cover = shownArt?.cover ?: art?.cover,
         palette = (shownArt ?: art)?.palette ?: SongPalette.fromArtist(song.artist),
-        playing = state.playing,
+        playing = state.wantsToPlay,
         positionMillis = position,
         durationMillis = state.durationMillis.takeIf { queued && it > 0 } ?: song.durationMillis,
         mascot = mascot,
@@ -296,6 +318,9 @@ private class Intro {
         for (part in listOf(figure, sky, cover, texts, line)) part.snapTo(1f)
     }
 }
+
+/** Late at night with nothing playing: how long she listens with closed eyes before she leans on the wall, so the move comes with air after the opening's last one. */
+private const val DOZE_OFF_MILLIS = 10_000L
 
 /** Covers are drawn at 330 dp and 48 dp; these are plenty on a 3x screen. */
 private const val COVER_PX = 990

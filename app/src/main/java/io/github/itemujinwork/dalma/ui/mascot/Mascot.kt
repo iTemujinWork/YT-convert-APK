@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -51,14 +52,21 @@ private fun variants(expression: Expression): Variants = when (expression) {
     Expression.ASLEEP -> Variants("eye_l_closed", "eye_r_closed", "mouth_asleep", "brow_l_asleep", "brow_r_asleep")
 }
 
-/** The designer's pivots, in the 240 box: the greeting tilts the whole face about kacsint.svg's (100,100); the lean is about the wall's foot. */
+/**
+ * The designer's pivots, in the 240 box: the greeting tilts the whole face about kacsint.svg's (100,100); the head
+ * turns about the chin (100,136), the back hair swings about the nape (100,84), the fringe about the top of the
+ * head (100,40), and the lean is about the wall's foot (60,200).
+ */
 private val GREET_PIVOT = Offset(120f, 120f)
+private val HEAD_PIVOT = Offset(120f, 163.2f)
+private val HAIR_PIVOT = Offset(120f, 100.8f)
+private val FRINGE_PIVOT = Offset(120f, 48f)
 private val LEAN_PIVOT = Offset(72f, 240f)
 
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
-/** Time-driven values that are not part of the state: breathing and a slow drift for twinkles. */
-private class Clock(val breath: Float, val drift: Float, val shine: Float)
+/** Time-driven values that are not part of the state: the sheet's breathing, a slow drift for twinkles, and the designer's idle motion this frame. */
+private class Clock(val breath: Float, val drift: Float, val shine: Float, val idle: IdlePose)
 
 /**
  * Dalma. The square art box is scaled to the width of the composable and aligned to its
@@ -113,10 +121,20 @@ fun Mascot(
         }
     }
 
+    // The designer's idle motions (listening, breathing, sleeping) run on a clock of their own; while one is on, every frame redraws.
+    val idleOn = !reducedMotion && state.images == null && (state.idle != null || state.previousIdle != null)
+    LaunchedEffect(idleOn) {
+        if (!idleOn) return@LaunchedEffect
+        val start = withFrameNanos { it }
+        while (true) withFrameNanos { state.idleMillis = (it - start) / 1_000_000 }
+    }
+
     val semanticsModifier = if (contentDescription != null) modifier.semantics { this.contentDescription = contentDescription } else modifier
     Canvas(semanticsModifier.graphicsLayer { alpha = state.presence.value }) {
         @Suppress("UNUSED_VARIABLE") val tick = frame
-        val clock = Clock(breath, drift, shine.value)
+        val idle = state.idlePose()
+        // The sheet's own breathing gives way to the designer's motion as far as one is on.
+        val clock = Clock(breath * (1f - idle.weight), drift, shine.value, idle)
         val images = state.images
         if (images != null) {
             drawPictures(state, images, clock)
@@ -186,25 +204,26 @@ private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
     val closeness = state.closeness.value
     val hop = state.hop.value
     val squash = state.squash.value
-    val neck = Offset(120f, 168f)
     val breath = clock.breath
+    val idle = clock.idle
 
     scale(closeness, closeness, pivot = Offset(120f, 240f)) {
-        // The hop stretches her a little going up and squashes her a little landing; asleep, she leans on the wall.
+        // The hop stretches her a little going up and squashes her a little landing; asleep, she leans on the
+        // wall; the designer's idle motion lifts (or sinks) the whole figure, z's and all.
         withTransform({
             rotate(state.lean.value, pivot = LEAN_PIVOT)
-            translate(0f, hop)
+            translate(0f, hop + idle.rise)
             scale(1f - 0.03f * squash, 1f + 0.045f * squash, pivot = Offset(120f, 240f))
         }) {
-            // The body breathes: the shoulders rise a little.
+            // The body breathes the sheet's way while no designer's motion is on: the shoulders rise a little.
             scale(1f + 0.008f * breath, 1f + 0.014f * breath, pivot = Offset(120f, 240f)) {
                 drawLayer("body")
             }
-            // The head sits on the neck; it tilts, sways with the music and follows a glance a little.
-            val headAngle = state.tilt.value + state.sway.value + state.gazeX.value * 0.9f
+            // The head turns about the chin, as the pose files have it: it tilts, swings with the music and follows a glance a little.
+            val headAngle = state.tilt.value + state.sway.value + state.gazeX.value * 0.9f + idle.head
             withTransform({
                 translate(0f, -1.6f * breath)
-                rotate(headAngle, pivot = neck)
+                rotate(headAngle, pivot = HEAD_PIVOT)
             }) {
                 drawHead(state, clock)
             }
@@ -219,22 +238,36 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
     val nodDip = state.nod.value * 0.9f
     val nodSquash = 1f - state.nod.value * 0.004f
     val headPivot = Offset(120f, 104f)
+    val idle = clock.idle
     withTransform({
         translate(0f, nodDip)
         scale(1f, nodSquash, pivot = headPivot)
     }) {
         // Turning three-quarters: the head narrows, the back hair shows a little more, a beat later.
         // The greeting tilts the head; the back hair follows it 100 ms late, the fringe 150 ms late.
+        // Listening, the back hair swings about the nape and the fringe about the top of the head, each behind the head.
         rotate(state.greetTiltBack.value, pivot = GREET_PIVOT) {
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
+            rotate(idle.hair, pivot = HAIR_PIVOT) {
+                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                    translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
+                }
             }
         }
         rotate(state.greetTilt.value, pivot = GREET_PIVOT) {
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                drawLayer("head")
-                drawLayer("blush")
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) { drawLayer("head") }
+        }
+        // The fringe's shadow lies on the face but belongs to the fringe: it moves with it, cut to the face's outline as in the files.
+        rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
+            rotate(idle.fringe, pivot = FRINGE_PIVOT) {
+                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                    translate(-3f * lag, -0.6f * clock.breath) {
+                        clipPath(MascotPaths.faceClip) { drawLayer("fringe_shadow") }
+                    }
+                }
             }
+        }
+        rotate(state.greetTilt.value, pivot = GREET_PIVOT) {
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) { drawLayer("blush") }
             // The face slides towards the turn and narrows; a glance moves it a touch too.
             withTransform({
                 translate(-14f * turn + state.gazeX.value * 1.2f, 1.5f * turn + state.gazeY.value * 0.8f)
@@ -243,19 +276,25 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
                 drawLayer("nose")
                 drawFace(state)
             }
+            // The cap of the hair sits on the skull and goes with the head; only the fringe under it swings.
+            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_cap") }
+            }
         }
         rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
-            }
-            // The hair clip comes forward and grows as she turns.
-            val clipCenter = MascotPaths.clipBounds.center
-            withTransform({
-                translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
-                scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
-            }) {
-                drawLayer("clip")
-                state.clipFill?.let { drawClipFill(it, clock.shine) }
+            rotate(idle.fringe, pivot = FRINGE_PIVOT) {
+                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
+                    translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
+                }
+                // The hair clip comes forward and grows as she turns.
+                val clipCenter = MascotPaths.clipBounds.center
+                withTransform({
+                    translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
+                    scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
+                }) {
+                    drawLayer("clip")
+                    state.clipFill?.let { drawClipFill(it, clock.shine) }
+                }
             }
         }
     }

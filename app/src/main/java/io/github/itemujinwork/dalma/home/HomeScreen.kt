@@ -28,6 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.R
+import io.github.itemujinwork.dalma.core.IdleMotion
 import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.ui.Sky
 import io.github.itemujinwork.dalma.ui.mascot.Mascot
@@ -55,7 +56,7 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
     // wink, at night by straightening up from the wall — and with no music that is all. Late at
     // night, with nothing to play, she leans back on the wall and sleeps.
     LaunchedEffect(sleepy) {
-        if (sleepy) mascot.sleepAtWallStill()
+        if (sleepy) mascot.sleepAtWallStill() else mascot.setIdle(IdleMotion.BREATHE)
         mascot.arrive()
         if (!mascot.reducedMotion) {
             delay((StartTimeline.greet.startMillis - StartTimeline.appear.endMillis).toLong())
@@ -63,9 +64,10 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
         }
         if (sleepy) {
             if (!mascot.reducedMotion) delay(StartTimeline.air.durationMillis.toLong())
-            mascot.sleepAtWall()
+            mascot.sleepAtWall() // and from here only alszik-fal's slow sinking moves her
+        } else {
+            mascot.live()
         }
-        mascot.live(sleepy)
     }
 
     Box(

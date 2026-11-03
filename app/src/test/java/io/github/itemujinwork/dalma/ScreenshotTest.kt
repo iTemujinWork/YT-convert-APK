@@ -155,6 +155,7 @@ class ScreenshotTest {
         title: String = "Hajnali vonat",
         list: ListUi = ListUi(),
         sorry: MascotState = mascot(),
+        state: MascotState = mascot(),
     ) = shot(name) {
         PlayerScreen(
             song = Song(id = 1, uri = "content://media/external_primary/audio/media/1".toUri(), fileName = "$title.opus", title = title, artist = artist, durationMillis = 235_000, addedAtSeconds = 0),
@@ -164,7 +165,7 @@ class ScreenshotTest {
             playing = playing,
             positionMillis = 108_000,
             durationMillis = 235_000,
-            mascot = mascot(),
+            mascot = state,
             sky = SkyState(),
             list = list,
             actions = noActions,
@@ -201,7 +202,15 @@ class ScreenshotTest {
     fun player_no_cover() = player("player_no_cover", cover = null, artist = null, playing = false, palette = SongPalette.fromArtist(null), title = "Esti villamos")
 
     @Test
-    fun player_evening() = player("player_evening", cover = fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()), artist = "Ibolya", palette = violet, evening = true, title = "Negyedik emelet")
+    fun player_evening() = player("player_evening", cover = fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()), artist = "Ibolya", palette = violet, evening = true, title = "Negyedik emelet", state = mascot { setExpression(Expression.NIGHT) })
+
+    /** Stopped: the cover rests at 0.94, and Dalma stands with open eyes. */
+    @Test
+    fun player_paused() = player("player_paused", cover = fakeCover(), playing = false)
+
+    /** Late at night with nothing playing: she leans on the wall in the corner and sleeps. */
+    @Test
+    fun player_night_asleep() = player("player_night_asleep", cover = fakeCover(0xFF543476.toInt(), 0xFF2E1D40.toInt(), 0xFFD9A3F0.toInt()), artist = "Ibolya", palette = violet, evening = true, playing = false, title = "Negyedik emelet", state = mascot { sleepAtWallStill() })
 
     @Test
     fun sheet_arriving() = sheet("sheet_arriving", mascot())

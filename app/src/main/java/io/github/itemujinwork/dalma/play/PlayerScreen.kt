@@ -6,6 +6,7 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
@@ -143,6 +144,9 @@ fun PlayerScreen(
     val rowsRise by transition.animateDp({ if (targetState) move(300, 300) else move(0, 300) }, "rowsRise") { if (it) 0.dp else 18.dp }
     val fadeStop by transition.animateFloat({ move() }, "fade") { if (it) 0.40f else 0.62f }
     val listOrMoving = list.open || transition.isRunning || rowsAlpha > 0f
+    // Stopped, the cover rests at 0.94 (the brief's "a borító 0.94-re megy össze"); playing, it is whole. Only on
+    // "Most szól": in the list it is the small cover by the title.
+    val coverRest by animateFloatAsState(if (playing || list.open) 1f else 0.94f, if (reduced) snap() else tween(300, easing = DalmaEase), label = "coverRest")
 
     // The pull-down with two zones (the brief's "Lehúzás"): the search's standing shift, the finger's
     // live pull on the rows or on the cover, and the search row that unfolds at the mark.
@@ -258,7 +262,7 @@ fun PlayerScreen(
                 .size(coverSize)
                 .graphicsLayer {
                     alpha = intro.cover
-                    scaleX = 0.92f + 0.08f * intro.cover
+                    scaleX = (0.92f + 0.08f * intro.cover) * coverRest
                     scaleY = scaleX
                 }
                 .then(if (list.open) Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = actions.onClose) else Modifier),
