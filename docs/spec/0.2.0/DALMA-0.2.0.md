@@ -25,6 +25,7 @@ Egy mondatban: **minden, ami a `Zene/Dalma` mappában van, Dalmáé; megmutatja,
 5. **Lista-mód.** A borító a bal felső sarokba zsugorodik, a cím mellé ül, a vonal az aljára; csipek, sorok. Vissza a kis borítóra koppintva. Kereső lehúzásra. Törlés elhúzásra: „Töröljem?" + „Igen".
 6. **Keverés.** Hosszú nyomás → lista-mód, a sorok animálva átrendeződnek, aztán vissza magától. Újra: ugyanígy, visszaáll a sorrend. A szóló dal elöl marad.
 7. **Listák.** `.m3u` olvasás és írás ugyanabban a mappában, relatív útvonalakkal. A „+" csip új listát csinál. YouTube-lejátszási lista megosztásából a letöltés végén magától `.m3u` lesz.
+7b. **Lehúzás két zónával.** Lista-módban a lehúzás rövid = vissza a „most szól"-ra, hosszú (96 dp) = kereső; a „most szól"-on a lehúzás = lista és kereső együtt. Részletek a Mozgásnál. Ez a már kész 5. lépés gesztuskódját módosítja — a hibalista után, a 8 előtt.
 8. **Indítás, ha van zene.** A köszönés után Dalma a sarokba lép, és előjön a lejátszó (lásd a mozgásokat).
 9. **Dalma a lejátszóban.** Nappal / este állapot. Megállításkor este kinyitja a szemét; a borító 0.94-re megy össze.
 9b. **Szerkesztés.** Dupla koppintás a dalon → cím, előadó szerkeszthető, a Borító sorra koppintva kép választható a telefon fotóalbumaiból (csak onnan). Mentés a fájl címkéibe (Opus: Vorbis comment + METADATA_BLOCK_PICTURE; AAC: iTunes-címkék), nem adatbázisba. Teszt: a módosított fájlt egy másik lejátszó is a javított adattal mutatja.
@@ -40,7 +41,8 @@ Egy mondatban: **minden, ami a `Zene/Dalma` mappában van, Dalmáé; megmutatja,
 - Palette sötét borítón két hasonló színt ad. Ha az élénk túl közel van az uralkodóhoz, világosítsd fehérrel, amíg olvasható a vonal.
 - Shared-element átmenet Compose-ban: `SharedTransitionLayout`. Nézd meg, melyik Compose-verziótól van, és azt írd a buildbe — ne találd ki.
 - Hosszú nyomás és vízszintes húzás ugyanazon a borítón ütközik. Egy `pointerInput`, a húzás küszöbe előzze meg a hosszú nyomás idejét. Teszteld, hogy húzás közben nem indul keverés.
-- A kereső lehúzása ne induljon el egy sima görgetéstől: küszöb (kb. 96 dp), ellenállás, és rezgés, amikor átlépted.
+- A kereső lehúzása ne induljon el egy sima görgetéstől: küszöb (96 dp), ellenállás, és rezgés, amikor átlépted.
+- A rövid lehúzás = bezárás csak akkor élhet, ha a lista a tetején áll (görgetés 0), és csak húzásra, nem a görgetés lendületéből. Holtsáv 16 dp: ami ennél rövidebb, az semmi. Különben egy erős felgörgetés túlfutása bezárja a listát, és azt senki nem érti.
 
 ## A képernyők
 
@@ -75,7 +77,7 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 - Sorok: fent 182-től, 64 dp-nként, bal 24, szélesség 342. Kis borító 48 × 48 sarok 10; cím Nunito 16 600 (bal 62, fent 10); előadó Nunito 13 tompa (fent 33). A szóló dal címe menta, a sor jobb végén 6 dp-s menta pont.
 - Vonal: fent 796.
 - Háttér: a dal uralkodó színének 10%-a az éjbe keverve fent, 40%-nál már éj.
-- Kereső: lehúzásra minden 96 dp-vel lejjebb csúszik, felül egy 44 dp-s sor, alul 1 px mélyteál vonal, benne 2 × 22 menta kurzor. Semmi ikon, semmi helykitöltő szöveg.
+- Kereső: lehúzásra (96 dp, lásd a Mozgásnál) minden 96 dp-vel lejjebb csúszik, felül egy 44 dp-s sor, alul 1 px mélyteál vonal, benne 2 × 22 menta kurzor. Semmi ikon, semmi helykitöltő szöveg. Bezárás: felgörgetés — a lista felmegy a helyére, a sor eltűnik (ha üres a mező; ha van benne szöveg, marad, amíg ki nem törlöd).
 - Törlés: a sor 96 dp-vel balra csúszik; alul 250 dp-s lap, sarok 28, háttér = éj 94% + fehér. Fogantyú 36 × 4 mélyteál. „Töröljem?" Fraunces 28 menta (bal 150, fent 58). „Igen" pirula: menta háttér, éj szöveg 15 700, 10 × 26 belső, sarok 20 (bal 150, fent 112). Dalma bocsánatkérő arccal, 200-as méretben, bal -20, alul 0. Bárhova máshova koppintasz: a lap lemegy, nem történt semmi.
 
 **Mozdulatok** — a borítón; a vonalon és Dalmán kívül bárhol a képernyőn ugyanez
@@ -85,9 +87,12 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 | koppintás | szól / megáll |
 | húzás balra / jobbra | következő / előző |
 | hosszú nyomás | keverés (lásd lent) |
-| felhúzás | lista-mód; vissza: koppintás a kis borítón |
+| felhúzás | lista-mód; vissza: rövid lehúzás, vagy koppintás a kis borítón |
 | a vonal húzása | tekerés; közben látszik az idő |
-| lista lehúzása (határozottan) | kereső |
+| lehúzás a „most szól"-on (96 dp) | lista és kereső, egyszerre |
+| lista lehúzása röviden (16–96 dp), elengedés | vissza a „most szól"-ra |
+| lista lehúzása hosszan (96 dp-n túl, rezgés), elengedés | kereső |
+| lista felgörgetése nyitott keresővel | a kereső becsukódik |
 | sor elhúzása balra | törlés: Töröljem? / Igen |
 | dupla koppintás (borítón, címen vagy a lista sorában) | szerkesztés (lásd lent) |
 
@@ -95,7 +100,7 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 
 - Dupla koppintás. A borítón az első koppintás azonnal szól/megáll; ha 300 ms-on belül jön a második, ezt visszavonjuk és szerkesztés nyílik. A címen és a lista sorában nincs ilyen ütközés.
 - Ugyanaz a képernyő alakul át, 500 ms: a borító felmegy (fent 60) és 160-asra zsugorodik; a nagy cím elhalványul; alatta három sor jön 6 dp-ről felúszva: cím (Fraunces 22, tej, fent 250), előadó (Nunito 15, halvány, fent 306), Borító (Nunito 15, tompa, fent 354 — nem beviteli mező, hanem egy sor, amire koppintva a képválasztó nyílik; a „Borító" szó az egyetlen ilyen felirat az appban). Minden sor alatt 1 px mélyteál vonal, a kurzor menta. Jobbra lent egy „Mentés" pirula (menta háttér, éj szöveg, fent 412). A billentyűzet feljön.
-- A Borító sorra koppintva a rendszer saját képválasztója nyílik (`PickVisualMedia`, `ImageOnly`): csak a telefon fotóalbumai, kamera és más forrás nincs, engedélykérés sincs. A választót nem mi rajzoljuk, a rendszeré — ezért nincs a terven. A kiválasztott kép középre vágva négyzet lesz, legfeljebb 1000 × 1000, JPEG 85; a borító 500 ms alatt átúszik az újba, és vele a háttér meg a vonal színe is (Palette újra). A választó bezárása után a mezők maradnak, a billentyűzet nem jön vissza magától.
+- A Borító sorra koppintva a rendszer saját képválasztója nyílik (`PickVisualMedia`, `ImageOnly`): csak a telefon fotóalbumai, kamera és más forrás nincs, engedélykérés sincs. A billentyűzet lemegy, a választó alulról jön fel. A terven egy rács jelzi a helyét; a valódi a rendszeré, azt nem mi rajzoljuk. A kiválasztott kép középre vágva négyzet lesz, legfeljebb 1000 × 1000, JPEG 85; a borító 500 ms alatt átúszik az újba, és vele a háttér meg a vonal színe is (Palette újra). A választó bezárása után a mezők maradnak, a billentyűzet nem jön vissza magától.
 - Mentés: a billentyűzet lemegy, a sorok visszaalakulnak címmé, a borító visszanő; Dalma csatja egyenesbe áll (300 ms), a vonal alatt „Megjegyeztem." (Fraunces 20, menta) 1,2 másodpercig, aztán a csat visszacsúszik.
 - Elvetés: lehúzás vagy koppintás a mezőkön kívül — minden visszaáll, nem történt semmi. Nincs „Mégse" gomb.
 - A címkék a fájlba íródnak; a lista és a „most szól" azonnal a frissített adatot mutatja.
@@ -124,6 +129,16 @@ Dalma köszönése mozgás, nem két kép: a fej 4°-ot billen (előtte egy lehe
 | 4200–4800 ms | a sarokban a köszönő figurából hallgató lesz (nappal nyitott szem, este csukott) |
 
 Ha nincs zene: az első 2000 ms ugyanez, és ennyi — marad az üres főképernyő. Éjjel (`anim-inditas-zenevel-ejjel.png`): a kacsintás helyett álmos ébredés — a falnak dőlésből kiegyenesedik, félig nyitott szem, puha mosoly —, a többi ugyanaz.
+
+**Lehúzás** (`anim-lehuzas-lista.png`, `anim-lehuzas-fo.png`)
+
+Egy gesztus, két zóna, egy küszöb. A tartalom az ujjal megy: 96 dp-ig egy az egyben, utána ellenállással (0,4-szeres). A küszöbnél rezgés, és ugyanabban a pillanatban kibomlik a kereső sora fent (0 → 44 dp, 200 ms), a vonala egy pillanatra mentára villan — ez mondja meg, hogy most már a kereső-zónában vagy. Ami a küszöb alatt van, annak nincs külön jelzése: amit lehúzol és elengedsz, az becsukódik, ezt mindenki ismeri.
+
+- Lista-módban, rövid húzás (16–96 dp) és elengedés: a lista-mód → „most szól" átmenet, ahogy lent, 400 ms. A sorok onnan csúsznak tovább lefelé, ahol az ujj elengedte őket, és közben halványulnak.
+- Lista-módban, a küszöbön túl és elengedés: a lista beáll 96 dp-vel lejjebb, a kereső sora marad, kurzor, billentyűzet. 250 ms.
+- „Most szól"-on: a borító, a cím és a vonal megy az ujjal (ugyanaz a 96 + ellenállás). A küszöb alatt elengedve minden visszaugrik, nem történt semmi. A küszöbön túl elengedve egy animációban, 400 ms: a borító a sarokba (a kereső-helyzetbe, fent 158), a nagy cím el, a kis cím mellé, csipek és sorok 18 dp-ről fel, a vonal 796-ra, Dalma el — és a kereső sora már fent van.
+- Nyitott keresővel felgörgetés: a lista felmegy 96-tal a helyére, a sor közben elhalványul. Ha van szöveg a mezőben, nem csukódik.
+- A küszöb után az ellenállás azért kell, hogy érezhető legyen: „innen már nincs hova". 150 dp ujj = 118 dp tartalom.
 
 **Lista-mód be és ki** (`anim-lista-es-keveres.png`, Apple Music-féle)
 
