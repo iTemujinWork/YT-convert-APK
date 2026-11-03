@@ -12,6 +12,7 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
+import io.github.itemujinwork.dalma.core.Lists
 import io.github.itemujinwork.dalma.core.M3u
 
 /** One song in the Music/Dalma folder, the way MediaStore knows it. */
@@ -48,8 +49,10 @@ class MusicFolder(context: Context) {
         emptyList()
     }
 
-    /** The .m3u files of the folder, by name; one that cannot be read is skipped. */
-    fun lists(): List<SongList> = try {
+    /** The .m3u files of the folder in the chips' order (the alphabet, by file name); one that cannot be read is skipped. */
+    fun lists(): List<SongList> = Lists.sorted(readLists()) { it.fileName }
+
+    private fun readLists(): List<SongList> = try {
         val files = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         resolver.query(files, arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME), "${MediaStore.MediaColumns.RELATIVE_PATH} = ? AND ${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ?", arrayOf(MusicStore.FOLDER_PATH, "%." + M3u.EXTENSION), MediaStore.MediaColumns.DISPLAY_NAME)?.use { cursor ->
             buildList {

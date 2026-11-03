@@ -1,5 +1,6 @@
 package io.github.itemujinwork.dalma.play
 
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -26,10 +27,13 @@ import androidx.compose.animation.core.tween
 import kotlinx.coroutines.coroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.itemujinwork.dalma.core.IdleMotion
+import io.github.itemujinwork.dalma.core.Lists
+import io.github.itemujinwork.dalma.core.M3u
 import io.github.itemujinwork.dalma.core.Shuffle
 import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.data.MusicFolder
+import io.github.itemujinwork.dalma.data.MusicStore
 import io.github.itemujinwork.dalma.data.Song
 import io.github.itemujinwork.dalma.data.SongList
 import io.github.itemujinwork.dalma.home.AboutCard
@@ -68,6 +72,7 @@ private class Art(val songId: Long, val cover: ImageBitmap?, val palette: SongPa
 fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     val context = LocalContext.current
     val folder = remember { MusicFolder(context) }
+    val store = remember { MusicStore(context) }
     val scope = rememberCoroutineScope()
     val playback = rememberForScreen(make = { Playback.connect(context) }, release = Playback::release)
     val state = playback?.state?.collectAsStateWithLifecycle()?.value ?: PlaybackState()
@@ -115,16 +120,52 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
     var deleting by remember { mutableStateOf<Song?>(null) }
-    // The .m3u lists of the folder, read with the songs; the chosen one narrows the rows in its own order.
-    val lists by produceState(initialValue = emptyList<SongList>(), songs) { value = withContext(Dispatchers.IO) { folder.lists() } }
+    // The .m3u lists of the folder, read with the songs and again after every edit on the surface;
+    // the chosen one narrows the rows in its own order and is the queue when one of its songs is tapped.
+    var listsVersion by remember { mutableIntStateOf(0) }
+    val lists by produceState(initialValue = emptyList<SongList>(), songs, listsVersion) { value = withContext(Dispatchers.IO) { folder.lists() } }
     var selectedList by rememberSaveable { mutableStateOf<String?>(null) }
     val chosen = lists.firstOrNull { it.name == selectedList }
-    val rows = remember(ordered, query, chosen) {
+    val pool = remember(ordered, chosen) {
         val byName = ordered.associateBy { it.fileName }
-        val pool = chosen?.entries?.mapNotNull { byName[it.fileName] }?.distinct() ?: ordered
+        chosen?.entries?.mapNotNull { byName[it.fileName] }?.distinct() ?: ordered
+    }
+    val rows = remember(pool, query) {
         val needle = query.trim()
         if (needle.isEmpty()) pool else pool.filter { it.title.contains(needle, ignoreCase = true) || it.artist?.contains(needle, ignoreCase = true) == true }
     }
+    val listsOf = remember(lists, songs) {
+        val names = HashMap<String, MutableSet<String>>()
+        for (list in lists) for (entry in list.entries) names.getOrPut(entry.fileName) { HashSet() }.add(list.name)
+        songs.associate { it.id to names[it.fileName].orEmpty() }
+    }
+    // The lists on the surface: a row open to the right, a chip being renamed, a list the sheet asks about.
+    var openRowId by remember { mutableStateOf<Long?>(null) }
+    var renaming by remember { mutableStateOf<String?>(null) }
+    var deletingList by remember { mutableStateOf<String?>(null) }
+    var pendingListEdit by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val listConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+        val retry = pendingListEdit
+        pendingListEdit = null
+        if (result.resultCode == Activity.RESULT_OK && retry != null) retry() else listsVersion++
+    }
+    // A list file changes off the main thread; a file someone else put there changes only with Android's consent, then the same edit runs again.
+    fun editList(run: () -> MusicStore.ListEdit, onDone: () -> Unit = {}) {
+        scope.launch {
+            when (val edit = withContext(Dispatchers.IO) { run() }) {
+                MusicStore.ListEdit.Done -> {
+                    onDone()
+                    listsVersion++
+                }
+                is MusicStore.ListEdit.NeedsConsent -> {
+                    pendingListEdit = { editList(run, onDone) }
+                    listConsent.launch(IntentSenderRequest.Builder(edit.intentSender).build())
+                }
+                MusicStore.ListEdit.Failed -> listsVersion++
+            }
+        }
+    }
+    fun entryOf(song: Song) = M3u.Entry(song.fileName, song.title, song.durationMillis / 1000)
     fun closeSearch() {
         searchOpen = false
         query = ""
@@ -132,6 +173,9 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
     BackHandler(enabled = listOpen) {
         when {
             deleting != null -> deleting = null
+            deletingList != null -> deletingList = null
+            renaming != null -> renaming = null
+            openRowId != null -> openRowId = null
             searchOpen -> closeSearch()
             else -> listOpen = false
         }
@@ -240,13 +284,25 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
         durationMillis = state.durationMillis.takeIf { queued && it > 0 } ?: song.durationMillis,
         mascot = mascot,
         sky = sky,
-        list = ListUi(open = listOpen, songs = rows, searchOpen = searchOpen, query = query, deleting = deleting, lists = lists.map { it.name }, selectedList = chosen?.name),
+        list = ListUi(
+            open = listOpen,
+            songs = rows,
+            searchOpen = searchOpen,
+            query = query,
+            deleting = deleting,
+            lists = lists.map { it.name },
+            selectedList = chosen?.name,
+            listsOf = listsOf,
+            openRowId = openRowId,
+            renaming = renaming,
+            deletingList = deletingList,
+        ),
         actions = ListActions(
             onClose = {
                 closeSearch()
                 listOpen = false
             },
-            onPick = { picked -> playback?.play(ordered, ordered.indexOf(picked)) },
+            onPick = { picked -> playback?.play(pool, pool.indexOf(picked)) },
             onSearchOpen = { searchOpen = true },
             onQueryChange = { query = it },
             onDeleteRequest = { deleting = it },
@@ -266,7 +322,55 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
             },
             onDeleteCancel = { deleting = null },
             onTouch = { touched = true },
-            onSelectList = { selectedList = it },
+            onSelectList = {
+                selectedList = it
+                openRowId = null
+            },
+            onOpenRow = { song ->
+                openRowId = song?.id
+                if (song != null) renaming = null
+            },
+            onToggleList = { song, name ->
+                lists.firstOrNull { it.name == name }?.let { target ->
+                    val entries = Lists.toggled(target.entries, entryOf(song))
+                    // The last song out takes the list with it: no list is empty.
+                    editList({ if (entries.isEmpty()) store.deleteList(target.uri) else store.writeList(target.uri, M3u.write(entries)) }) {
+                        if (entries.isEmpty() && selectedList == name) selectedList = null
+                    }
+                }
+            },
+            onCreateList = { song, typed ->
+                val fileName = Lists.fileNameFor(typed)
+                if (fileName != null) {
+                    val existing = lists.firstOrNull { it.fileName.equals(fileName, ignoreCase = true) }
+                    when {
+                        existing == null -> editList({ if (store.createList(fileName, M3u.write(listOf(entryOf(song)))) != null) MusicStore.ListEdit.Done else MusicStore.ListEdit.Failed })
+                        !Lists.contains(existing.entries, song.fileName) -> editList({ store.writeList(existing.uri, M3u.write(Lists.toggled(existing.entries, entryOf(song)))) })
+                    }
+                }
+            },
+            onRenameStart = { name ->
+                renaming = name
+                if (name != null) openRowId = null
+            },
+            onRenameCommit = { old, typed ->
+                renaming = null
+                val target = lists.firstOrNull { it.name == old }
+                val fileName = Lists.fileNameFor(typed)
+                when {
+                    target == null -> Unit
+                    fileName == null -> deletingList = old
+                    fileName == target.fileName -> Unit
+                    else -> editList({ store.renameList(target.uri, fileName) }) { if (selectedList == old) selectedList = M3u.nameOf(fileName) }
+                }
+            },
+            onDeleteListConfirm = { name ->
+                deletingList = null
+                lists.firstOrNull { it.name == name }?.let { target ->
+                    editList({ store.deleteList(target.uri) }) { if (selectedList == name) selectedList = null }
+                }
+            },
+            onDeleteListCancel = { deletingList = null },
             onOpenWithSearch = {
                 listOpen = true
                 searchOpen = true

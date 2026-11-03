@@ -1,6 +1,12 @@
 package io.github.itemujinwork.dalma.play
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateDp
@@ -47,6 +53,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -157,6 +164,8 @@ fun PlayerScreen(
     val pull = remember { PullController(markPx, with(density) { PullDown.DEAD_ZONE_DP.dp.toPx() }, scope, haptic, reduced) }
     val listNow by rememberUpdatedState(list)
     val actionsNow by rememberUpdatedState(actions)
+    // The row open to the right, or the chip being typed into: a finger outside it closes it.
+    var focusBounds by remember { mutableStateOf<Rect?>(null) }
     LaunchedEffect(list.searchOpen) { if (list.searchOpen) pull.openSearch() else pull.closeSearch() }
     LaunchedEffect(listOrMoving) { if (!listOrMoving && pull.pulling == Pulling.List) pull.settle() }
     val pullToSearch = remember(pull) {
@@ -205,24 +214,63 @@ fun PlayerScreen(
         Sky(Modifier.fillMaxSize(), state = sky, ambientShootingStars = true)
 
         if (listOrMoving) {
+            // Without a list there is no chip row and the rows start where it would be; the first list
+            // born brings the row in from 18 dp and sends the rows down to 182 (300 ms).
+            val haveLists = list.lists.isNotEmpty()
+            val rowsTop by animateDpAsState(if (haveLists) ROWS_TOP.dp else CHIPS_TOP.dp, move(0, 300), label = "rowsTop")
+            val editing = list.openRowId != null || list.renaming != null
             // Animated positions go through the lambda offset: layout moves, nothing recomposes.
-            Chips(list.lists, list.selectedList, actions.onSelectList, Modifier.offset { IntOffset(0, (CHIPS_TOP.dp + shift + rowsRise).roundToPx()) }.padding(start = 24.dp).alpha(rowsAlpha))
-            SongRows(
-                songs = list.songs,
-                currentId = currentId,
-                deleting = list.deleting,
-                thumbnail = thumbnail,
-                onPick = actions.onPick,
-                onLongPress = onLongPress,
-                onTouch = actions.onTouch,
-                onDeleteRequest = actions.onDeleteRequest,
-                pullToSearch = pullToSearch,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = ROWS_TOP.dp + shift + rowsRise, bottom = (SHEET_HEIGHT - LIST_LINE_TOP + 16).dp)
-                    .padding(horizontal = 24.dp)
-                    .alpha(rowsAlpha),
-            )
+            Box(
+                Modifier.fillMaxSize().closeOnTapOutside(
+                    active = editing,
+                    inside = { focusBounds },
+                    onOutside = {
+                        if (listNow.renaming != null) actionsNow.onRenameStart(null)
+                        if (listNow.openRowId != null) actionsNow.onOpenRow(null)
+                    },
+                ),
+            ) {
+                AnimatedVisibility(
+                    visible = haveLists,
+                    enter = if (reduced) EnterTransition.None else fadeIn(tween(300)) + slideInVertically(tween(300, easing = DalmaEase)) { with(density) { 18.dp.roundToPx() } },
+                    exit = if (reduced) ExitTransition.None else fadeOut(tween(300)),
+                    modifier = Modifier.offset { IntOffset(0, (CHIPS_TOP.dp + shift + rowsRise).roundToPx()) }.alpha(rowsAlpha),
+                ) {
+                    Chips(
+                        lists = list.lists,
+                        selected = list.selectedList,
+                        renaming = list.renaming,
+                        onSelect = actions.onSelectList,
+                        onRenameStart = actions.onRenameStart,
+                        onRenameCommit = actions.onRenameCommit,
+                        onEditorBounds = { focusBounds = it },
+                    )
+                }
+                SongRows(
+                    songs = list.songs,
+                    currentId = currentId,
+                    deleting = list.deleting,
+                    listKey = list.selectedList,
+                    lists = list.lists,
+                    listsOf = list.listsOf,
+                    openRowId = list.openRowId,
+                    thumbnail = thumbnail,
+                    onPick = actions.onPick,
+                    onLongPress = onLongPress,
+                    onTouch = actions.onTouch,
+                    onDeleteRequest = actions.onDeleteRequest,
+                    onOpenRow = actions.onOpenRow,
+                    onToggleList = actions.onToggleList,
+                    onCreateList = actions.onCreateList,
+                    onOpenBounds = { focusBounds = it },
+                    pullToSearch = pullToSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = rowsTop + shift + rowsRise, bottom = (SHEET_HEIGHT - LIST_LINE_TOP + 16).dp)
+                        .padding(horizontal = 24.dp)
+                        .alpha(rowsAlpha),
+                )
+            }
             Text(
                 text = song.title,
                 style = SmallTitle,
@@ -313,7 +361,12 @@ fun PlayerScreen(
             )
         }
 
-        DeleteSheet(song = list.deleting, mascot = sorryMascot, onConfirm = actions.onDeleteConfirm, onCancel = actions.onDeleteCancel)
+        DeleteSheet(
+            visible = list.deleting != null || list.deletingList != null,
+            mascot = sorryMascot,
+            onConfirm = { listNow.deletingList?.let(actionsNow.onDeleteListConfirm) ?: listNow.deleting?.let(actionsNow.onDeleteConfirm) },
+            onCancel = { if (listNow.deletingList != null) actionsNow.onDeleteListCancel() else actionsNow.onDeleteCancel() },
+        )
     }
 }
 

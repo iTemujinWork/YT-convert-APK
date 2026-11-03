@@ -1,9 +1,12 @@
 package io.github.itemujinwork.dalma.data
 
+import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.content.IntentSender
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
@@ -55,6 +58,59 @@ class MusicStore(context: Context) {
         uri
     } catch (_: Exception) {
         null
+    }
+
+    /** A list born on the surface, from one song; MediaStore gives a clashing name a "(1)". */
+    fun createList(fileName: String, text: String): Uri? = try {
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, LIST_MIME)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, FOLDER)
+        }
+        val uri = resolver.insert(MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: throw IOException("MediaStore refused $fileName")
+        resolver.openOutputStream(uri, "w")?.use { it.write(text.toByteArray()) } ?: throw IOException("cannot open $uri")
+        uri
+    } catch (_: Exception) {
+        null
+    }
+
+    /** What came of changing a list file on the surface. */
+    sealed interface ListEdit {
+        data object Done : ListEdit
+
+        /** A file someone else put there: Android asks the person itself before it changes. */
+        class NeedsConsent(val intentSender: IntentSender) : ListEdit
+
+        data object Failed : ListEdit
+    }
+
+    /** Overwrites a list in place: Dalma's own files at once, others only with Android's consent. */
+    fun writeList(uri: Uri, text: String): ListEdit = edit(uri, delete = false) {
+        resolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray()) } ?: throw IOException("cannot open $uri")
+    }
+
+    /** Renames a list file; its name is the list's name. */
+    fun renameList(uri: Uri, fileName: String): ListEdit = edit(uri, delete = false) {
+        if (resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, fileName) }, null, null) == 0) throw IOException("no such list")
+    }
+
+    /** Deletes a list file; the songs stay. */
+    fun deleteList(uri: Uri): ListEdit = edit(uri, delete = true) {
+        if (resolver.delete(uri, null, null) == 0) throw IOException("no such list")
+    }
+
+    private inline fun edit(uri: Uri, delete: Boolean, action: () -> Unit): ListEdit = try {
+        action()
+        ListEdit.Done
+    } catch (e: SecurityException) {
+        val sender = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            (if (delete) MediaStore.createDeleteRequest(resolver, listOf(uri)) else MediaStore.createWriteRequest(resolver, listOf(uri))).intentSender
+        } else {
+            (e as? RecoverableSecurityException)?.userAction?.actionIntent?.intentSender
+        }
+        if (sender != null) ListEdit.NeedsConsent(sender) else ListEdit.Failed
+    } catch (_: Exception) {
+        ListEdit.Failed
     }
 
     /** True while the file is still there (the user may delete it with a file manager). */

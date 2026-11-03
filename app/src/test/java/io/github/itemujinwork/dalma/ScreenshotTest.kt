@@ -187,6 +187,18 @@ class ScreenshotTest {
     @Test
     fun list_search() = player("list_search", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, searchOpen = true))
 
+    /** A row swiped right: its lists under it, the one it is in filled, and the "+" at the end. */
+    @Test
+    fun list_row_open() = player("list_row_open", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, lists = listOf("YouTube Mix", "Futás", "Este"), openRowId = 3, listsOf = mapOf(3L to setOf("YouTube Mix"))))
+
+    /** A chip being renamed in place: mint frame, the cursor at the end. */
+    @Test
+    fun list_rename() = player("list_rename", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs, lists = listOf("YouTube Mix", "Futás", "Este"), selectedList = "Futás", renaming = "Futás"))
+
+    /** Without a list there is no chip row: the rows start where it would be. */
+    @Test
+    fun list_no_lists() = player("list_no_lists", cover = fakeCover(), list = ListUi(open = true, songs = sampleSongs))
+
     @Test
     fun list_delete() = player(
         "list_delete",
