@@ -17,6 +17,7 @@ class StartTimelineTest {
         assertEquals(StartTimeline.Span(3900, 4500), StartTimeline.line)
         assertEquals(StartTimeline.Span(4200, 4800), StartTimeline.listen)
         assertEquals(2000, StartTimeline.WITHOUT_MUSIC_MILLIS)
+        assertEquals(48, StartTimeline.WALL_DP)
     }
 
     @Test

@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -25,6 +26,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import io.github.itemujinwork.dalma.R
@@ -38,6 +40,7 @@ import io.github.itemujinwork.dalma.ui.theme.DalmaColors
 import io.github.itemujinwork.dalma.update.AppUpdateCheck
 import kotlinx.coroutines.delay
 import java.time.LocalTime
+import kotlin.math.roundToInt
 
 /** The brief's evening, 20:00–06:00: Dalma wakes from the wall instead of winking, and listens with closed eyes. It follows the clock, not dark mode. */
 fun isLateEvening(now: LocalTime = LocalTime.now()): Boolean = now.hour >= 20 || now.hour < 6
@@ -95,10 +98,12 @@ fun HomeScreen(sleepy: Boolean = remember { isLateEvening() }, checkForUpdates: 
                     .padding(8.dp),
             )
         }
+        // Against the wall she stands 48 dp further left, as the sheet has it: a wall to lean on.
         Mascot(
             state = mascot,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
+                .offset { IntOffset(-(StartTimeline.WALL_DP.dp.toPx() * mascot.wallness).roundToInt(), 0) }
                 .requiredSize(StartTimeline.BIG_DP.dp),
             contentDescription = stringResource(R.string.cd_dalma),
         )

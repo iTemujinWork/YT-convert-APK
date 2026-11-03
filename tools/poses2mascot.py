@@ -110,6 +110,13 @@ def shapes_of(path):
                 walk(child, matrix(t) if t and t not in skipped else m, gid, clipdef)
                 continue
             clipped = child.get("clip-path") is not None  # the fringe's shadow, clipped to the face in the file
+            # A shape's own transform (the shadow's translate(0 2.2)) is baked in too, for this shape only.
+            own = child.get("transform")
+            mc = m
+            if own:
+                t = matrix(own)
+                mc = [m[0] * t[0] + m[2] * t[1], m[1] * t[0] + m[3] * t[1], m[0] * t[2] + m[2] * t[3], m[1] * t[2] + m[3] * t[3],
+                      m[0] * t[4] + m[2] * t[5] + m[4], m[1] * t[4] + m[3] * t[5] + m[5]]
             attrs = {"fill": "none"} if clipdef else {k: child.get(k) for k in KEEP if child.get(k) is not None}
             if "fill" not in attrs:  # SVG's default fill is black; a stroke-only line means none
                 attrs["fill"] = "none" if attrs.get("stroke") else "#000000"
@@ -124,10 +131,10 @@ def shapes_of(path):
                     if t in "MLQCZ":
                         d.append(t); i += 1
                     else:
-                        x, y = apply(m, float(t), float(tokens[i + 1])); pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}"); i += 2
+                        x, y = apply(mc, float(t), float(tokens[i + 1])); pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}"); i += 2
                 out.append({"tag": "path", "key": key, "attrs": attrs, "d": " ".join(d), "pts": pts, "group": group, "clipped": clipped, "clipdef": clipdef})
             elif tag in ("ellipse", "circle"):
-                x, y = apply(m, float(child.get("cx")), float(child.get("cy")))
+                x, y = apply(mc, float(child.get("cx")), float(child.get("cy")))
                 rx = float(child.get("rx") or child.get("r")) * SCALE
                 ry = float(child.get("ry") or child.get("r")) * SCALE
                 out.append({"tag": "ellipse", "key": key, "attrs": attrs, "cx": x, "cy": y, "rx": rx, "ry": ry, "pts": [(x, y)], "group": group})
@@ -138,7 +145,7 @@ def shapes_of(path):
                 tokens, upm = glyph_path("z")
                 d, pts, i, last = [], [], 0, (0.0, 0.0)
                 def put(gx, gy):
-                    x, y = apply(m, gx * size / upm + x0, y0 - gy * size / upm)
+                    x, y = apply(mc, gx * size / upm + x0, y0 - gy * size / upm)
                     pts.append((x, y)); d.append(f"{fmt(x)} {fmt(y)}")
                 while i < len(tokens):
                     t = tokens[i]

@@ -369,7 +369,7 @@ fun PlayerScreen(
                 height = searchHeight,
                 alpha = searchAlpha,
                 flash = pull.flash.value,
-                modifier = Modifier.offset(y = 62.dp).fillMaxWidth().padding(horizontal = 24.dp),
+                modifier = Modifier.offset(y = SEARCH_TOP.dp).fillMaxWidth().padding(horizontal = 24.dp),
             )
         }
 
@@ -435,9 +435,10 @@ fun PlayerScreen(
         }
 
         if (bigAlpha > 0f) {
-            // The opening: from 440 dp centred (as on the empty screen) to 190 dp in the corner, about the bottom-left.
+            // The opening: from 440 dp centred (as on the empty screen) to 190 dp in the corner, about the bottom-left;
+            // big and against the wall (the night's start) she stands 48 dp further left, as on the empty screen.
             val figureSize = lerp(StartTimeline.BIG_DP.dp, StartTimeline.SMALL_DP.dp, intro.figure)
-            val figureLeft = lerp((screenWidth - StartTimeline.BIG_DP.dp) / 2, (-6).dp, intro.figure)
+            val figureLeft = lerp((screenWidth - StartTimeline.BIG_DP.dp) / 2, (-6).dp, intro.figure) - StartTimeline.WALL_DP.dp * (mascot.wallness * (1f - intro.figure))
             Mascot(
                 state = mascot,
                 modifier = Modifier
@@ -609,6 +610,7 @@ private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, 
 private const val SHEET_HEIGHT = 844
 private const val LINE_TOP = 610
 private const val LIST_LINE_TOP = 796
+private const val SEARCH_TOP = 56
 private const val CHIPS_TOP = 134
 private const val ROWS_TOP = 182
 private const val TOUCH_BAND = 44
@@ -619,7 +621,7 @@ private const val EDIT_TITLE_TOP = 250
 private const val EDIT_ARTIST_TOP = 306
 private const val EDIT_COVER_TOP = 354
 private const val EDIT_SAVE_TOP = 412
-private const val SAVED_TOP = 634
+private const val SAVED_TOP = 640
 
 private val Title = TextStyle(fontFamily = Fraunces, fontWeight = FontWeight.Medium, fontSize = 24.sp, lineHeight = 30.sp, color = DalmaColors.Milk)
 private val Artist = TextStyle(fontFamily = Nunito, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 20.sp, color = DalmaColors.Pale)

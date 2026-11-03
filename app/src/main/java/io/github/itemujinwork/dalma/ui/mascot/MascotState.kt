@@ -252,8 +252,9 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     /**
      * The greeting as motion, not two pictures: a breath of anticipation the other way, the head
-     * tilts 4°, the back hair follows 100 ms and the fringe 150 ms later; the left eye squashes
-     * to a line while the brows morph into the wink's; then everything comes back. 1.2 s in all.
+     * tilts 4°, the back hair follows 100 ms later and swings a little further (1.2×, 4.8°), the
+     * fringe 150 ms later and more held back (0.6×, 2.4°); the left eye squashes to a line while
+     * the brows morph into the wink's; then everything comes back. 1.2 s in all.
      */
     suspend fun greet() {
         if (reducedMotion) return
@@ -261,16 +262,16 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
             show("alap")
             return
         }
-        suspend fun Animatable<Float, AnimationVector1D>.tiltAndBack() {
-            animateTo(-1f, tween(100, easing = FastOutSlowInEasing))
-            animateTo(4f, tween(260, easing = FastOutSlowInEasing))
+        suspend fun Animatable<Float, AnimationVector1D>.tiltAndBack(times: Float) {
+            animateTo(-1f * times, tween(100, easing = FastOutSlowInEasing))
+            animateTo(GREET_TILT * times, tween(260, easing = FastOutSlowInEasing))
             delay(420)
             animateTo(0f, tween(420, easing = FastOutSlowInEasing))
         }
         coroutineScope {
-            launch { greetTilt.tiltAndBack() }
-            launch { delay(100); greetTiltBack.tiltAndBack() }
-            launch { delay(150); greetTiltFront.tiltAndBack() }
+            launch { greetTilt.tiltAndBack(1f) }
+            launch { delay(100); greetTiltBack.tiltAndBack(GREET_HAIR_TIMES) }
+            launch { delay(150); greetTiltFront.tiltAndBack(GREET_FRINGE_TIMES) }
             launch {
                 delay(160)
                 coroutineScope {
@@ -286,11 +287,14 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
+    /** How far she is against the wall, 0..1: the screens stand her further left by it, so there is a wall to lean on. */
+    val wallness: Float get() = (lean.value / WALL_LEAN).coerceIn(0f, 1f)
+
     /** Late at night, with nothing to hear, she leans on the wall and sleeps: alszik-fal.svg, sinking and rising 1.8 points. */
     suspend fun sleepAtWall() {
         coroutineScope {
             launch { setExpression(Expression.ASLEEP, 600) }
-            launch { lean.go(-9f, tween(900, easing = FastOutSlowInEasing)) }
+            launch { lean.go(WALL_LEAN, tween(900, easing = FastOutSlowInEasing)) }
             launch { tilt.go(-10f, tween(900, easing = FastOutSlowInEasing)) }
             launch { setIdle(IdleMotion.ASLEEP, 900) }
         }
@@ -298,7 +302,7 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     /** The same, at once: where the night's opening starts, and for screenshots. */
     suspend fun sleepAtWallStill() {
-        lean.snapTo(-9f)
+        lean.snapTo(WALL_LEAN)
         tilt.snapTo(-10f)
         previousExpression = Expression.ASLEEP
         expression = Expression.ASLEEP
@@ -385,9 +389,9 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     /** Frozen poses for screenshots: the wink, and a blink frame (0 open, 1 half, 2 closed). */
     suspend fun greetStill() {
-        greetTilt.snapTo(4f)
-        greetTiltBack.snapTo(4f)
-        greetTiltFront.snapTo(4f)
+        greetTilt.snapTo(GREET_TILT)
+        greetTiltBack.snapTo(GREET_TILT * GREET_HAIR_TIMES)
+        greetTiltFront.snapTo(GREET_TILT * GREET_FRINGE_TIMES)
         winkSquash.snapTo(1f)
         browMorph.snapTo(1f)
     }
@@ -559,6 +563,12 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 }
+
+/** The designer's numbers: the greeting's head tilt and how the hair and the fringe follow it; the lean against the wall (alszik-fal.svg). */
+private const val GREET_TILT = 4f
+private const val GREET_HAIR_TIMES = 1.2f
+private const val GREET_FRINGE_TIMES = 0.6f
+private const val WALL_LEAN = -9f
 
 /** [arriving]: she is not there until [MascotState.arrive] fades her in, so the first frame shows no one. */
 @Composable

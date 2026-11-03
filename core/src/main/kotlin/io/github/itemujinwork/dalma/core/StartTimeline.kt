@@ -37,6 +37,9 @@ object StartTimeline {
     /** Without music the show ends here. */
     const val WITHOUT_MUSIC_MILLIS = 2000
 
+    /** Asleep against the wall she stands this much further left (dp), so there is a wall to lean on. */
+    const val WALL_DP = 48
+
     /** The figure's size on the empty screen and in the player's corner, in dp. */
     const val BIG_DP = 440
     const val SMALL_DP = 190
