@@ -59,12 +59,6 @@ internal class IdlePose(val rise: Float, val head: Float, val hair: Float, val f
  */
 @Stable
 class MascotState internal constructor(val reducedMotion: Boolean, internal val images: MascotImages? = null, startHidden: Boolean = false) {
-    /** 0 = looking at you, 1 = head turned three-quarters, hair clip towards you. */
-    val turn = Animatable(0f)
-
-    /** The hair follows the turn a beat later (secondary motion). */
-    val hairLag = Animatable(0f)
-
     /** Scale of the whole figure: she "comes closer" from 0.94 to 1. */
     val closeness = Animatable(0.94f)
 
@@ -166,8 +160,6 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
 
     val usesPictures: Boolean get() = images != null
 
-    private fun ms(millis: Int) = if (reducedMotion) 0 else millis
-
     /** Animates, or jumps when motion is off (no frame clock needed then: good for screenshots too). */
     private suspend fun Animatable<Float, AnimationVector1D>.go(target: Float, spec: AnimationSpec<Float>) {
         if (reducedMotion) snapTo(target) else animateTo(target, spec)
@@ -222,7 +214,7 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
                 launch {
                     show(
                         when (next) {
-                            Expression.NEUTRAL -> if (turn.value > 0.5f) "fordul" else "alap"
+                            Expression.NEUTRAL -> "alap"
                             Expression.HAPPY -> "orul"
                             Expression.SORRY -> "bocsanat"
                             Expression.SLEEPY, Expression.NIGHT, Expression.ASLEEP -> "almos"
@@ -243,18 +235,18 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         idleBlend.go(1f, tween(millis, easing = FastOutSlowInEasing))
     }
 
-    /** She appears: 0 → 1 opacity and 0.96 → 1 scale over 600 ms, as the sheet's opening has it. */
-    suspend fun arrive() {
+    /** She appears: 0 → 1 opacity and 0.96 → 1 scale over 600 ms, as the sheet's opening has it; on the download's sheet without the scale. */
+    suspend fun arrive(scale: Boolean = true) {
         if (reducedMotion) {
             presence.snapTo(1f)
             closeness.snapTo(1f)
             return
         }
         presence.snapTo(0f)
-        closeness.snapTo(0.96f)
+        closeness.snapTo(if (scale) 0.96f else 1f)
         coroutineScope {
             launch { presence.animateTo(1f, tween(600, easing = LinearOutSlowInEasing)) }
-            launch { closeness.animateTo(1f, tween(600, easing = FastOutSlowInEasing)) }
+            if (scale) launch { closeness.animateTo(1f, tween(600, easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -476,29 +468,49 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
         }
     }
 
-    /** Turns so the hair clip faces you: a tiny anticipation, then the turn, the hair a beat behind. */
-    suspend fun turnAway() {
-        if (!reducedMotion && images == null) {
-            tilt.animateTo(-2f, tween(120, easing = FastOutSlowInEasing))
-        }
+    /**
+     * A download fills the clip: her head tilts 2.5° towards it and her eyes look up at it; meanwhile
+     * she looks back at you once and blinks once (and now and then after that, should it take long).
+     * Runs until cancelled.
+     */
+    suspend fun watchTheClip() {
         coroutineScope {
-            if (images != null) {
-                launch {
-                    if (!play("fordul")) delay(ms(400).toLong())
-                    show("fordul")
-                }
-            }
-            launch { turn.go(1f, tween(700, easing = FastOutSlowInEasing)) }
-            launch { hairLag.go(1f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)) }
-            launch { tilt.go(0f, tween(500, easing = FastOutSlowInEasing)) }
+            launch { tilt.go(2.5f, tween(400, easing = FastOutSlowInEasing)) }
+            launch { gazeX.go(1f, tween(320, easing = FastOutSlowInEasing)) }
+            launch { gazeY.go(-1f, tween(320, easing = FastOutSlowInEasing)) }
+        }
+        if (reducedMotion || images != null) return
+        delay(2_000)
+        coroutineScope {
+            launch { gazeX.animateTo(0f, tween(300, easing = FastOutSlowInEasing)) }
+            launch { gazeY.animateTo(0f, tween(300, easing = FastOutSlowInEasing)) }
+        }
+        delay(700)
+        coroutineScope {
+            launch { gazeX.animateTo(1f, tween(320, easing = FastOutSlowInEasing)) }
+            launch { gazeY.animateTo(-1f, tween(320, easing = FastOutSlowInEasing)) }
+        }
+        delay(1_500)
+        blink()
+        while (true) {
+            delay(Random.nextLong(7_000, 11_000))
+            blink()
         }
     }
 
-    suspend fun turnBack() {
-        if (images != null) show("alap")
+    /** The pose held, for screenshots: head to the clip, eyes up at it. */
+    suspend fun watchTheClipStill() {
+        tilt.snapTo(2.5f)
+        gazeX.snapTo(1f)
+        gazeY.snapTo(-1f)
+    }
+
+    /** The clip is full: eyes and head back to you (300 ms). */
+    suspend fun lookBack() {
         coroutineScope {
-            launch { turn.go(0f, tween(600, easing = FastOutSlowInEasing)) }
-            launch { hairLag.go(0f, spring(dampingRatio = 0.62f, stiffness = Spring.StiffnessLow)) }
+            launch { tilt.go(0f, tween(300, easing = FastOutSlowInEasing)) }
+            launch { gazeX.go(0f, tween(300, easing = FastOutSlowInEasing)) }
+            launch { gazeY.go(0f, tween(300, easing = FastOutSlowInEasing)) }
         }
     }
 
@@ -521,24 +533,6 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
                 }
             }
         }
-    }
-
-    /** The download is done: she turns back and is happy (one clip when she has one). */
-    suspend fun celebrate() {
-        if (images != null && play("vissza_orul")) {
-            turn.snapTo(0f)
-            hairLag.snapTo(0f)
-            setExpression(Expression.HAPPY)
-            return
-        }
-        turnBack()
-        happy()
-    }
-
-    /** Something went wrong: she turns back with a kind, apologetic face. */
-    suspend fun apologize() {
-        turnBack()
-        sorry()
     }
 
     /** A kind, apologetic face with a slight tilt and a small sinking of the head. */

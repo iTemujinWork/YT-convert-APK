@@ -22,7 +22,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,9 +38,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import io.github.itemujinwork.dalma.R
+import io.github.itemujinwork.dalma.core.IdleMotion
 import io.github.itemujinwork.dalma.core.LinkCheck
 import io.github.itemujinwork.dalma.core.Outcome
 import io.github.itemujinwork.dalma.data.Prefs
+import io.github.itemujinwork.dalma.home.isLateEvening
 import io.github.itemujinwork.dalma.ui.DragHandle
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.Sentence
@@ -64,9 +65,9 @@ private const val DISMISS_AFTER_SUCCESS = 2_800L
 private const val DISMISS_AFTER_FAILURE = 5_000L
 
 /**
- * The small sheet over YouTube. No text, no button: Dalma comes closer, turns so her
- * hair clip shows, the clip fills with the download, she turns back and is happy, a quiet
- * vibration, one sentence, and the sheet slides away by itself.
+ * The small sheet over YouTube. No text, no button: Dalma breathes, her hair clip fills with the
+ * download in jerks while she watches it, then she is happy, a quiet vibration, one sentence, a
+ * shooting star, and the sheet slides away by itself.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("InlinedApi")
@@ -80,7 +81,6 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
     val sky = rememberSkyState()
     val haptic = LocalHapticFeedback.current
     var sentence by remember { mutableStateOf<String?>(null) }
-    var glow by remember { mutableFloatStateOf(0f) }
     var progressDescription by remember { mutableStateOf<Int?>(null) }
 
     // Android 13+: the system asks once, with its own words, at the first share. The work does
@@ -101,10 +101,21 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         }
     }
 
+    val night = remember { isLateEvening() }
     LaunchedEffect(Unit) {
-        mascot.arrive()
+        // She breathes (1.2 points, 4–5 s), never turns, never grows, and the clip is empty from the
+        // sheet's rise; at night she is found asleep against the wall and wakes as the sheet comes up.
+        mascot.setIdle(IdleMotion.BREATHE)
+        if (night) mascot.sleepAtWallStill()
+        mascot.clipFill = 0f
+        mascot.arrive(scale = false)
+        if (night) {
+            delay(if (reducedMotion) 0L else 200L)
+            mascot.wakeUp()
+        }
         val target = (check as? LinkCheck.Found)?.target
         if (target == null) {
+            mascot.clipFill = null
             mascot.sorry()
             sentence = Sentences.forLinkCheck(context, check)
             dismissAfter(DISMISS_AFTER_FAILURE)
@@ -113,6 +124,7 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         val controller = ShareController(context)
         if (controller.alreadyHave(target)) {
             delay(150)
+            mascot.clipFill = null
             mascot.happy()
             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             sentence = context.getString(R.string.already_have)
@@ -121,26 +133,26 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         }
 
         val startedAt = SystemClock.elapsedRealtime()
-        mascot.clipFill = 0f
-        mascot.turnAway()
+        // While it fills, her head tilts towards the clip and her eyes look up at it; a look back at you once, a blink once.
+        val watching = launch { mascot.watchTheClip() }
         val finalStatus = controller.start(target)
             .onEach { status ->
                 if (status is ShareStatus.Working) {
                     status.fraction?.let { fraction ->
+                        // Real progress, in jerks: what has come so far, not an even animation.
                         mascot.clipFill = fraction
-                        glow = fraction
                         progressDescription = (fraction * 100).toInt()
                     }
                 }
             }
             .first { it is ShareStatus.Finished || it is ShareStatus.WaitingForNetwork || it is ShareStatus.Cancelled }
+        watching.cancel()
 
         if (finalStatus is ShareStatus.Cancelled) {
             // The user asked to stop: no sentence, no apology, just away.
             progressDescription = null
             mascot.clipFill = null
-            glow = 0f
-            mascot.turnBack()
+            mascot.lookBack()
             dismissAfter(300)
             return@LaunchedEffect
         }
@@ -150,19 +162,24 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         progressDescription = null
         val outcome = (finalStatus as? ShareStatus.Finished)?.outcome
         if (outcome != null && outcome !is Outcome.Failed) {
+            // Full: eyes and head back, then by day happy as before; at night a quiet smile, and back to the wall to sleep.
             mascot.clipFill = 1f
-            glow = 1f
             delay(if (reducedMotion) 0L else 260L)
+            mascot.lookBack()
             mascot.clipFill = null
-            mascot.celebrate()
+            if (!night) mascot.happy()
             haptic.performHapticFeedback(HapticFeedbackType.Confirm)
             sky.shoot()
             sentence = Sentences.forOutcome(context, outcome)
+            if (night) {
+                delay(if (reducedMotion) 0L else 900L)
+                mascot.sleepAtWall()
+            }
             dismissAfter(DISMISS_AFTER_SUCCESS)
         } else {
             mascot.clipFill = null
-            glow = 0f
-            mascot.apologize()
+            mascot.lookBack()
+            mascot.sorry()
             sentence = if (outcome != null) Sentences.forOutcome(context, outcome) else context.getString(R.string.no_internet)
             dismissAfter(DISMISS_AFTER_FAILURE)
         }
@@ -182,7 +199,6 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
         ShareSheetContent(
             mascot = mascot,
             sky = sky,
-            glow = glow,
             sentence = sentence,
             progressPercent = progressDescription,
             modifier = Modifier
@@ -197,14 +213,13 @@ fun ShareSheet(check: LinkCheck, onFinished: () -> Unit) {
 fun ShareSheetContent(
     mascot: MascotState,
     sky: SkyState,
-    glow: Float,
     sentence: String?,
     progressPercent: Int?,
     modifier: Modifier = Modifier,
 ) {
     val description = progressPercent?.let { stringResource(R.string.cd_dalma_working, it) } ?: stringResource(R.string.cd_dalma)
     Box(modifier) {
-        Sky(Modifier.fillMaxSize(), state = sky, glow = glow)
+        Sky(Modifier.fillMaxSize(), state = sky)
         Sentence(sentence, Modifier.align(Alignment.TopCenter).padding(top = 52.dp))
         Mascot(
             state = mascot,

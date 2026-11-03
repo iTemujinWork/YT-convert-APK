@@ -80,12 +80,11 @@ class ScreenshotTest {
     }
 
     /** The sheet is 62 % of the screen, at the bottom, like the real one over YouTube. */
-    private fun sheet(name: String, state: MascotState, glow: Float = 0f, sentence: String? = null, percent: Int? = null) = shot(name) {
+    private fun sheet(name: String, state: MascotState, sentence: String? = null, percent: Int? = null) = shot(name) {
         Box(Modifier.fillMaxSize().background(Color(0xFF101010))) {
             ShareSheetContent(
                 mascot = state,
                 sky = SkyState(),
-                glow = glow,
                 sentence = sentence,
                 progressPercent = percent,
                 modifier = Modifier
@@ -241,13 +240,13 @@ class ScreenshotTest {
     fun sheet_arriving() = sheet("sheet_arriving", mascot())
 
     @Test
-    fun sheet_turned_clip_filling() = sheet("sheet_turned_40", mascot { turn.snapTo(1f); clipFill = 0.4f }, glow = 0.4f, percent = 40)
+    fun sheet_filling() = sheet("sheet_filling_40", mascot { clipFill = 0.4f; watchTheClipStill() }, percent = 40)
 
     @Test
-    fun sheet_turned_clip_full() = sheet("sheet_turned_100", mascot { turn.snapTo(1f); clipFill = 1f }, glow = 1f, percent = 100)
+    fun sheet_full() = sheet("sheet_full", mascot { clipFill = 1f }, percent = 100)
 
     @Test
-    fun sheet_saved() = sheet("sheet_saved", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, glow = 1f, sentence = text(R.string.saved))
+    fun sheet_saved() = sheet("sheet_saved", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, sentence = text(R.string.saved))
 
     @Test
     fun sheet_already_have() = sheet("sheet_already_have", mascot { setExpression(Expression.HAPPY); sparkles.snapTo(1f) }, sentence = text(R.string.already_have))
@@ -265,7 +264,7 @@ class ScreenshotTest {
     fun mascot_blink() = sheet("mascot_blink", mascot { blinkStill(2) })
 
     @Test
-    fun mascot_half_turn() = sheet("mascot_half_turn", mascot { turn.snapTo(0.5f); clipFill = 0.7f })
+    fun sheet_night_asleep() = sheet("sheet_night_asleep", mascot { sleepAtWallStill(); clipFill = 0f })
 
     @Test
     fun mascot_sleepy() = sheet("mascot_sleepy", mascot { setExpression(Expression.SLEEPY); zz.snapTo(1f) })
@@ -290,10 +289,10 @@ class ScreenshotTest {
     fun pictures_idle() = sheet("pictures_idle", pictures())
 
     @Test
-    fun pictures_turned_clip_filling() = sheet("pictures_turned_40", pictures { turnAway(); clipFill = 0.4f }, glow = 0.4f, percent = 40)
+    fun pictures_filling() = sheet("pictures_filling_40", pictures { clipFill = 0.4f }, percent = 40)
 
     @Test
-    fun pictures_happy() = sheet("pictures_happy", pictures { setExpression(Expression.HAPPY) }, glow = 1f, sentence = text(R.string.saved))
+    fun pictures_happy() = sheet("pictures_happy", pictures { setExpression(Expression.HAPPY) }, sentence = text(R.string.saved))
 
     @Test
     fun pictures_sorry() = sheet("pictures_sorry", pictures { setExpression(Expression.SORRY) }, sentence = text(R.string.private_video))

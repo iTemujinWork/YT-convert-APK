@@ -2,6 +2,7 @@ package io.github.itemujinwork.dalma.ui.mascot
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -68,8 +69,12 @@ private val CLIP_PIVOT = Offset(157.2f, 64.8f)
 
 private const val TWO_PI = (Math.PI * 2).toFloat()
 
-/** Time-driven values that are not part of the state: the sheet's breathing, a slow drift for twinkles, and the designer's idle motion this frame. */
-private class Clock(val breath: Float, val drift: Float, val shine: Float, val idle: IdlePose)
+/** Time-driven values that are not part of the state: the sheet's breathing, a slow drift for twinkles, the designer's idle motion this frame, and how full the clip shows. */
+private class Clock(val breath: Float, val drift: Float, val idle: IdlePose, val clipFill: Float?)
+
+/** The brief's glance: 2.2 right and 2.4 up at most, in the files' points; the lid's line goes with the eye, the brows stay. */
+private const val GLANCE_X = 2.2f * 1.2f
+private const val GLANCE_Y = 2.4f * 1.2f
 
 /**
  * Dalma. The square art box is scaled to the width of the composable and aligned to its
@@ -105,13 +110,16 @@ fun Mascot(
         ).value
     }
 
-    // A short gleam on the hair clip the moment it is full.
-    val shine = remember { Animatable(0f) }
-    val full = state.clipFill == 1f
-    LaunchedEffect(full) {
-        if (full && !reducedMotion) {
-            shine.snapTo(1f)
-            shine.animateTo(0f, tween(520))
+    // A download fills the clip in jerks: each report a quick move (150 ms), never a jump.
+    val clipShown = remember { Animatable(0f) }
+    val clipFill = state.clipFill
+    LaunchedEffect(clipFill) {
+        if (clipFill == null) {
+            clipShown.snapTo(0f)
+        } else if (reducedMotion) {
+            clipShown.snapTo(clipFill)
+        } else {
+            clipShown.animateTo(clipFill, tween(150, easing = FastOutSlowInEasing))
         }
     }
 
@@ -137,7 +145,7 @@ fun Mascot(
         @Suppress("UNUSED_VARIABLE") val tick = frame
         val idle = state.idlePose()
         // The sheet's own breathing gives way to the designer's motion as far as one is on.
-        val clock = Clock(breath * (1f - idle.weight), drift, shine.value, idle)
+        val clock = Clock(breath * (1f - idle.weight), drift, idle, if (clipFill != null) clipShown.value else null)
         val images = state.images
         if (images != null) {
             drawPictures(state, images, clock)
@@ -177,14 +185,14 @@ private fun DrawScope.drawPictures(state: MascotState, images: MascotImages, clo
                     images.still(previous)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = 1f - blend) }
                 }
                 images.still(state.still)?.let { drawImage(it, dstOffset = IntOffset.Zero, dstSize = dst, alpha = blend) }
-                if (state.still == "fordul") state.clipFill?.let { drawPictureClipFill(images, it, dst, clock.shine) }
+                clock.clipFill?.let { drawPictureClipFill(images, it, dst) }
             }
         }
     }
 }
 
 /** The empty part of the hair clip is painted deep teal through the clip's mask. */
-private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst: IntSize, shine: Float) {
+private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst: IntSize) {
     val mask = images.clipMask ?: return
     val box = images.clipBox ?: return
     val scale = dst.width.toFloat() / images.size
@@ -195,9 +203,6 @@ private fun DrawScope.drawPictureClipFill(images: MascotImages, fill: Float, dst
         clipRect(box[0] * scale - 2f, top - 2f, box[2] * scale + 2f, emptyBottom) {
             drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, colorFilter = ColorFilter.tint(DalmaColors.DeepTeal, BlendMode.SrcIn))
         }
-    }
-    if (shine > 0f) {
-        drawImage(mask, dstOffset = IntOffset.Zero, dstSize = dst, alpha = shine * 0.75f, colorFilter = ColorFilter.tint(DalmaColors.Milk, BlendMode.SrcIn))
     }
 }
 
@@ -222,8 +227,8 @@ private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
             scale(1f + 0.008f * breath, 1f + 0.014f * breath, pivot = Offset(120f, 240f)) {
                 drawLayer("body")
             }
-            // The head turns about the chin, as the pose files have it: it tilts, swings with the music and follows a glance a little.
-            val headAngle = state.tilt.value + state.sway.value + state.gazeX.value * 0.9f + idle.head
+            // The head turns about the chin, as the pose files have it: it tilts and swings with the music.
+            val headAngle = state.tilt.value + state.sway.value + idle.head
             withTransform({
                 translate(0f, -1.6f * breath)
                 rotate(headAngle, pivot = HEAD_PIVOT)
@@ -236,8 +241,6 @@ private fun DrawScope.drawMascot(state: MascotState, clock: Clock) {
 }
 
 private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
-    val turn = state.turn.value
-    val lag = state.hairLag.value
     val nodDip = state.nod.value * 0.9f
     val nodSquash = 1f - state.nod.value * 0.004f
     val headPivot = Offset(120f, 104f)
@@ -246,58 +249,35 @@ private fun DrawScope.drawHead(state: MascotState, clock: Clock) {
         translate(0f, nodDip)
         scale(1f, nodSquash, pivot = headPivot)
     }) {
-        // Turning three-quarters: the head narrows, the back hair shows a little more, a beat later.
         // The greeting tilts the head; the back hair follows it 100 ms late, the fringe 150 ms late.
         // Listening, the back hair swings about the nape and the fringe about the top of the head, each behind the head.
         rotate(state.greetTiltBack.value, pivot = GREET_PIVOT) {
             rotate(idle.hair, pivot = HAIR_PIVOT) {
-                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                    translate(5f * lag, -0.4f * clock.breath) { drawLayer("hair_back") }
-                }
+                translate(0f, -0.4f * clock.breath) { drawLayer("hair_back") }
             }
         }
-        rotate(state.greetTilt.value, pivot = GREET_PIVOT) {
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) { drawLayer("head") }
-        }
+        rotate(state.greetTilt.value, pivot = GREET_PIVOT) { drawLayer("head") }
         // The fringe's shadow lies on the face but belongs to the fringe: it moves with it, cut to the face's outline as in the files.
         rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
             rotate(idle.fringe, pivot = FRINGE_PIVOT) {
-                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                    translate(-3f * lag, -0.6f * clock.breath) {
-                        clipPath(MascotPaths.faceClip) { drawLayer("fringe_shadow") }
-                    }
+                translate(0f, -0.6f * clock.breath) {
+                    clipPath(MascotPaths.faceClip) { drawLayer("fringe_shadow") }
                 }
             }
         }
         rotate(state.greetTilt.value, pivot = GREET_PIVOT) {
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) { drawLayer("blush") }
-            // The face slides towards the turn and narrows; a glance moves it a touch too.
-            withTransform({
-                translate(-14f * turn + state.gazeX.value * 1.2f, 1.5f * turn + state.gazeY.value * 0.8f)
-                scale(1f - 0.12f * turn, 1f, pivot = headPivot)
-            }) {
-                drawLayer("nose")
-                drawFace(state)
-            }
+            drawLayer("blush")
+            drawLayer("nose")
+            drawFace(state)
             // The cap of the hair sits on the skull and goes with the head; only the fringe under it swings.
-            scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_cap") }
-            }
+            translate(0f, -0.6f * clock.breath) { drawLayer("hair_cap") }
         }
         rotate(state.greetTiltFront.value, pivot = GREET_PIVOT) {
             rotate(idle.fringe, pivot = FRINGE_PIVOT) {
-                scale(1f - 0.07f * turn, 1f, pivot = headPivot) {
-                    translate(-3f * lag, -0.6f * clock.breath) { drawLayer("hair_front") }
-                }
-                // The hair clip comes forward and grows as she turns.
-                val clipCenter = MascotPaths.clipBounds.center
-                withTransform({
-                    translate(-9f * turn - 3f * (lag - turn), 2.5f * turn - 0.6f * clock.breath)
-                    scale(1f + 0.28f * turn, 1f + 0.28f * turn, pivot = clipCenter)
-                    rotate(7f * state.clipStraight.value, pivot = CLIP_PIVOT)
-                }) {
-                    drawLayer("clip")
-                    state.clipFill?.let { drawClipFill(it, clock.shine) }
+                translate(0f, -0.6f * clock.breath) {
+                    drawLayer("hair_front")
+                    // The hair clip: a download fills it, and "Megjegyeztem." stands it straight.
+                    rotate(7f * state.clipStraight.value, pivot = CLIP_PIVOT) { drawClip(clock.clipFill) }
                 }
             }
         }
@@ -344,13 +324,13 @@ private fun DrawScope.drawExpression(state: MascotState, expression: Expression,
 }
 
 /**
- * One eye, moved whole by the glance (2.2 right, 2.4 up at most, the upper lid's line with it,
- * so the eye never slips out from under the line), and squashed vertically for the wink.
+ * One eye, moved whole by the glance (the upper lid's line with it, so the eye never slips out
+ * from under the line), and squashed vertically for the wink.
  */
 private fun DrawScope.drawEye(layer: String, state: MascotState, alpha: Float, squash: Float = 0f) {
     val shapes = MascotPaths.layer(layer)
     if (shapes.isEmpty()) return
-    val gaze = Offset(state.gazeX.value * 2.2f, state.gazeY.value * 2.4f)
+    val gaze = Offset(state.gazeX.value * GLANCE_X, state.gazeY.value * GLANCE_Y)
     val centre = shapes.map { it.bounds }.reduce { acc, rect -> Rect(minOf(acc.left, rect.left), minOf(acc.top, rect.top), maxOf(acc.right, rect.right), maxOf(acc.bottom, rect.bottom)) }.center
     withTransform({
         translate(gaze.x, gaze.y)
@@ -360,17 +340,27 @@ private fun DrawScope.drawEye(layer: String, state: MascotState, alpha: Float, s
     }
 }
 
-/** The download fills the clip from the bottom; the empty part is deep teal; full, it gleams once. */
-private fun DrawScope.drawClipFill(fill: Float, shine: Float) {
-    val bounds = MascotPaths.clipBounds
-    val emptyHeight = bounds.height * (1f - fill.coerceIn(0f, 1f))
-    if (emptyHeight > 0f) {
-        clipRect(bounds.left - 2f, bounds.top - 2f, bounds.right + 2f, bounds.top + emptyHeight) {
-            drawPath(MascotPaths.clip, DalmaColors.DeepTeal)
+/**
+ * The hair clip as tolt.svg draws it while a download runs: the triangle deep teal inside, filling
+ * with mint from the bottom as the file comes, the mint outline whole over it and the white tick on
+ * top; with nothing running, the plain mint clip.
+ */
+private fun DrawScope.drawClip(fill: Float?) {
+    val shapes = MascotPaths.layer("clip")
+    if (shapes.isEmpty()) return
+    val triangle = shapes.first()
+    drawShape(triangle)
+    if (fill != null) {
+        val bounds = MascotPaths.clipBounds
+        val emptyHeight = bounds.height * (1f - fill.coerceIn(0f, 1f))
+        if (emptyHeight > 0f) {
+            clipRect(bounds.left - 2f, bounds.top - 2f, bounds.right + 2f, bounds.top + emptyHeight) {
+                drawPath(MascotPaths.clip, DalmaColors.DeepTeal)
+            }
         }
+        drawPath(MascotPaths.clip, DalmaColors.Mint, style = Stroke(width = triangle.strokeWidth, join = triangle.join))
     }
-    drawPath(MascotPaths.clip, DalmaColors.Mint, style = Stroke(width = 1.6f))
-    if (shine > 0f) drawPath(MascotPaths.clip, DalmaColors.Milk, alpha = shine * 0.8f)
+    for (shape in shapes.drop(1)) drawShape(shape)
 }
 
 private fun DrawScope.drawExtras(state: MascotState, clock: Clock) {
