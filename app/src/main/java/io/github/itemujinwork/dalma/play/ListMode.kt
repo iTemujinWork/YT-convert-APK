@@ -30,6 +30,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import io.github.itemujinwork.dalma.core.PullDown
+import kotlinx.coroutines.CoroutineScope
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -42,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -115,6 +123,10 @@ class ListActions(
     val onDeleteCancel: () -> Unit,
     val onTouch: () -> Unit = {},
     val onSelectList: (String?) -> Unit = {},
+    /** A pull past the mark on "Most szól": the list and the search together. */
+    val onOpenWithSearch: () -> Unit = {},
+    /** Scrolling up with an empty search: it closes. */
+    val onCloseSearch: () -> Unit = {},
 )
 
 /** The chips: "Mind", then every list of the folder, then "+". The chosen one is mint. */
@@ -187,6 +199,10 @@ internal fun SongRows(
 
 @Composable
 private fun SongRow(song: Song, thumb: ImageBitmap?, current: Boolean, aside: Boolean, onPick: () -> Unit, onLongPress: () -> Unit, onDeleteRequest: () -> Unit, modifier: Modifier = Modifier) {
+    // The pointer handlers live as long as the row; the handlers change with the screen's state.
+    val pick by rememberUpdatedState(onPick)
+    val longPress by rememberUpdatedState(onLongPress)
+    val deleteRequest by rememberUpdatedState(onDeleteRequest)
     val asidePx = with(LocalDensity.current) { ASIDE.toPx() }
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -204,12 +220,12 @@ private fun SongRow(song: Song, thumb: ImageBitmap?, current: Boolean, aside: Bo
                         scope.launch { offset.snapTo((offset.value + dx).coerceIn(-asidePx, 0f)) }
                     },
                     onDragEnd = {
-                        if (offset.value <= -asidePx / 2) onDeleteRequest() else scope.launch { offset.animateTo(0f, tween(300, easing = DalmaEase)) }
+                        if (offset.value <= -asidePx / 2) deleteRequest() else scope.launch { offset.animateTo(0f, tween(300, easing = DalmaEase)) }
                     },
                     onDragCancel = { scope.launch { offset.animateTo(0f, tween(300, easing = DalmaEase)) } },
                 )
             }
-            .pointerInput(song.id) { detectTapGestures(onTap = { onPick() }, onLongPress = { onLongPress() }) },
+            .pointerInput(song.id) { detectTapGestures(onTap = { pick() }, onLongPress = { longPress() }) },
     ) {
         Thumb(thumb, SongPalette.fromArtist(song.artist), Modifier.size(48.dp))
         Column(Modifier.weight(1f).padding(start = 14.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -240,12 +256,16 @@ internal fun coverBrush(size: Size, light: Color, mid: Color, dark: Color): Brus
     return Brush.linearGradient(0f to light, 0.55f to mid, 1f to dark, start = centre - direction * (length / 2f), end = centre + direction * (length / 2f))
 }
 
-/** A 44 dp row with a mint cursor and a hair line under it: no icon, no words. The keyboard comes with the focus. */
+/**
+ * The search: a 44 dp row with a mint cursor and a hair line under it, no icon, no words. It
+ * unfolds from 0 at the pull's mark (its line flashing mint), stays while the search is open, and
+ * fades as the list goes back up. The keyboard comes with the focus.
+ */
 @Composable
-internal fun SearchRow(query: String, onQueryChange: (String) -> Unit, open: Boolean, modifier: Modifier) {
+internal fun SearchRow(query: String, onQueryChange: (String) -> Unit, open: Boolean, height: Dp, alpha: Float, flash: Float, modifier: Modifier) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(open) { if (open) runCatching { focus.requestFocus() } }
-    Box(modifier.height(44.dp)) {
+    Box(modifier.height(height).alpha(alpha).clipToBounds()) {
         BasicTextField(
             value = query,
             onValueChange = onQueryChange,
@@ -254,52 +274,145 @@ internal fun SearchRow(query: String, onQueryChange: (String) -> Unit, open: Boo
             cursorBrush = SolidColor(DalmaColors.Mint),
             modifier = Modifier.align(Alignment.CenterStart).fillMaxWidth().focusRequester(focus),
         )
-        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(1.dp).background(DalmaColors.DeepTeal))
+        Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(1.dp).background(lerp(DalmaColors.DeepTeal, DalmaColors.Mint, flash)))
     }
 }
 
+/** Which content the finger is pulling. */
+internal enum class Pulling { None, NowPlaying, List }
+
 /**
- * A firm pull on the list from its top opens the search: the list follows the finger with
- * resistance, buzzes once past the 96 dp mark, and opens when let go past it. A plain scroll
- * never gets there.
+ * One gesture, two zones, one threshold: the content follows the finger one to one to the 96 dp
+ * mark and at 0.4 past it; at the mark a buzz, and the search row unfolds. Letting go does
+ * nothing, closes the list, or opens the search, by how far the finger went (PullDown in core).
  */
-@Composable
-internal fun rememberPullToSearch(enabled: Boolean, pull: Animatable<Float, AnimationVector1D>, onOpen: () -> Unit): NestedScrollConnection {
-    val mark = with(LocalDensity.current) { PULL_MARK.toPx() }
-    val haptic = LocalHapticFeedback.current
-    val scope = rememberCoroutineScope()
-    var crossed by remember { mutableStateOf(false) }
-    return remember(enabled, mark) {
+internal class PullController(
+    private val markPx: Float,
+    private val deadZonePx: Float,
+    private val scope: CoroutineScope,
+    private val haptic: HapticFeedback,
+    private val reduced: Boolean,
+) {
+    /** The content's offset under the finger, px; after a release it animates home. */
+    val offset = Animatable(0f)
+
+    /** The list's standing shift while the search is open: 0, or the mark. */
+    val base = Animatable(0f)
+
+    /** The search line's one-shot flash at the mark. */
+    val flash = Animatable(0f)
+
+    var pulling by mutableStateOf(Pulling.None)
+        private set
+
+    /** The finger is past the mark: the search zone. */
+    var crossed by mutableStateOf(false)
+        private set
+
+    private var finger = 0f
+
+    private fun spec(millis: Int) = if (reduced) snap() else tween<Float>(millis, easing = DalmaEase)
+
+    fun begin(what: Pulling) {
+        pulling = what
+        finger = 0f
+        crossed = false
+    }
+
+    /** The finger moved [dy] px; returns how much the content moved. */
+    fun drag(dy: Float): Float {
+        finger = (finger + dy).coerceAtLeast(0f)
+        val before = offset.value
+        val target = PullDown.content(finger, markPx)
+        scope.launch { offset.snapTo(target) }
+        val now = finger >= markPx
+        if (now && !crossed) {
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            scope.launch {
+                flash.snapTo(1f)
+                flash.animateTo(0f, spec(300))
+            }
+        }
+        crossed = now
+        return target - before
+    }
+
+    /** Lets go: the outcome, with the content already on its way; the caller opens or closes the screens. */
+    fun release(): PullDown.Outcome {
+        val outcome = PullDown.outcome(finger, markPx, deadZonePx, canClose = pulling == Pulling.List)
+        val from = pulling
+        finger = 0f
+        crossed = false
+        when (outcome) {
+            PullDown.Outcome.Search -> {
+                // The list settles the mark lower; the excess over it goes home (250 ms in the list, 400 from "Most szól").
+                pulling = Pulling.List
+                scope.launch {
+                    base.snapTo(markPx)
+                    offset.snapTo(offset.value - markPx)
+                    offset.animateTo(0f, spec(if (from == Pulling.List) 250 else 400))
+                    pulling = Pulling.None
+                }
+            }
+            PullDown.Outcome.Nothing -> scope.launch {
+                offset.animateTo(0f, spec(300))
+                pulling = Pulling.None
+            }
+            PullDown.Outcome.Close -> Unit // the rows go on down from here while they fade; settle() ends it
+        }
+        return outcome
+    }
+
+    /** After a close by pull, once the list has gone: the pull is over. */
+    fun settle() {
+        scope.launch { offset.snapTo(0f) }
+        pulling = Pulling.None
+    }
+
+    /** The search closes: the list goes up to its place (the row fades with it). */
+    suspend fun closeSearch() = base.animateTo(0f, spec(300))
+
+    suspend fun openSearch() = base.snapTo(markPx)
+
+    /**
+     * The rows' side of it. A pull begins when the list is at its top and the finger drags, never
+     * from a scroll's momentum; scrolling up with the search open and empty closes the search.
+     */
+    fun connection(enabled: () -> Boolean, searchOpen: () -> Boolean, searchEmpty: () -> Boolean, onRelease: (PullDown.Outcome) -> Unit, onCloseSearch: () -> Unit): NestedScrollConnection =
         object : NestedScrollConnection {
+            private var closingSearch = false
+
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (pull.value <= 0f || available.y >= 0f) return Offset.Zero
-                // Pushing back up while stretched: the stretch gives first, the list scrolls after.
-                val give = maxOf(available.y, -pull.value)
-                scope.launch { pull.snapTo(pull.value + give) }
-                return Offset(0f, give)
+                if (source != NestedScrollSource.UserInput) return Offset.Zero
+                if (pulling == Pulling.List && available.y < 0f && finger > 0f) {
+                    // Pushing back up while pulled: the pull gives first, the rows scroll after.
+                    val moved = drag(available.y)
+                    return Offset(0f, moved)
+                }
+                if (searchOpen() && available.y < 0f && searchEmpty() && base.value > 0f) {
+                    if (!closingSearch) {
+                        closingSearch = true
+                        onCloseSearch()
+                    }
+                    return available
+                }
+                return Offset.Zero
             }
 
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-                if (!enabled || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
-                val stretched = pull.value + available.y * 0.5f
-                scope.launch { pull.snapTo(stretched) }
-                if (!crossed && stretched >= mark) {
-                    crossed = true
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                }
+                if (!enabled() || source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
+                if (pulling == Pulling.None) begin(Pulling.List)
+                drag(available.y)
                 return Offset(0f, available.y)
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                val stretched = pull.value > 0f
-                val open = crossed
-                crossed = false
-                if (open) onOpen()
-                pull.animateTo(0f, tween(300, easing = DalmaEase))
-                return if (stretched) available else Velocity.Zero
+                closingSearch = false
+                if (pulling != Pulling.List || (finger <= 0f && offset.value <= 0f)) return Velocity.Zero
+                onRelease(release())
+                return available
             }
         }
-    }
 }
 
 /**

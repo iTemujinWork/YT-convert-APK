@@ -245,6 +245,11 @@ fun PlayerRoute(songs: List<Song>, onFolderChanged: () -> Unit) {
             onDeleteCancel = { deleting = null },
             onTouch = { touched = true },
             onSelectList = { selectedList = it },
+            onOpenWithSearch = {
+                listOpen = true
+                searchOpen = true
+            },
+            onCloseSearch = { if (query.isBlank()) closeSearch() },
         ),
         thumbnail = thumbnail,
         sorryMascot = sorryMascot,

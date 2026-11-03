@@ -32,9 +32,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +55,7 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -63,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import io.github.itemujinwork.dalma.R
+import io.github.itemujinwork.dalma.core.PullDown
 import io.github.itemujinwork.dalma.core.SongPalette
 import io.github.itemujinwork.dalma.core.StartTimeline
 import io.github.itemujinwork.dalma.core.TimeText
@@ -139,11 +144,37 @@ fun PlayerScreen(
     val fadeStop by transition.animateFloat({ move() }, "fade") { if (it) 0.40f else 0.62f }
     val listOrMoving = list.open || transition.isRunning || rowsAlpha > 0f
 
-    // The search pulls everything in the list down by 96 dp; while the finger pulls, it follows with resistance.
-    val searchShift by animateDpAsState(if (list.open && list.searchOpen) PULL_MARK else 0.dp, if (reduced) snap() else tween(300, easing = DalmaEase), label = "search")
-    val pull = remember { Animatable(0f) }
-    val pullToSearch = rememberPullToSearch(enabled = list.open && !list.searchOpen, pull = pull, onOpen = actions.onSearchOpen)
-    val shift = searchShift + with(LocalDensity.current) { pull.value.toDp() }
+    // The pull-down with two zones (the brief's "Lehúzás"): the search's standing shift, the finger's
+    // live pull on the rows or on the cover, and the search row that unfolds at the mark.
+    val density = LocalDensity.current
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val markPx = with(density) { PULL_MARK.toPx() }
+    val pull = remember { PullController(markPx, with(density) { PullDown.DEAD_ZONE_DP.dp.toPx() }, scope, haptic, reduced) }
+    val listNow by rememberUpdatedState(list)
+    val actionsNow by rememberUpdatedState(actions)
+    LaunchedEffect(list.searchOpen) { if (list.searchOpen) pull.openSearch() else pull.closeSearch() }
+    LaunchedEffect(listOrMoving) { if (!listOrMoving && pull.pulling == Pulling.List) pull.settle() }
+    val pullToSearch = remember(pull) {
+        pull.connection(
+            enabled = { listNow.open && !listNow.searchOpen },
+            searchOpen = { listNow.searchOpen },
+            searchEmpty = { listNow.query.isBlank() },
+            onRelease = { outcome ->
+                when (outcome) {
+                    PullDown.Outcome.Search -> actionsNow.onSearchOpen()
+                    PullDown.Outcome.Close -> actionsNow.onClose()
+                    PullDown.Outcome.Nothing -> Unit
+                }
+            },
+            onCloseSearch = { actionsNow.onCloseSearch() },
+        )
+    }
+    val listPull = with(density) { (if (pull.pulling == Pulling.List) pull.offset.value else 0f).toDp() }
+    val nowPull = with(density) { (if (pull.pulling == Pulling.NowPlaying && !list.open) pull.offset.value else 0f).toDp() }
+    val shift = with(density) { pull.base.value.toDp() } + listPull
+    val searchHeight by animateDpAsState(if (pull.crossed || list.searchOpen || pull.base.value > 0f) 44.dp else 0.dp, if (reduced) snap() else tween(200, easing = DalmaEase), label = "searchRow")
+    val searchAlpha = if (pull.crossed || list.searchOpen) 1f else (pull.base.value / markPx).coerceIn(0f, 1f)
 
     val songTop by animateColorAsState(Color(palette.tint(if (list.open) 0.10f else if (evening) 0.22f else 0.32f)), tween(COLOR_FADE_MILLIS), label = "top")
     val top = lerp(DalmaColors.Night, songTop, intro.sky)
@@ -159,7 +190,14 @@ fun PlayerScreen(
     ) {
         val screenWidth = maxWidth
         // Underneath everything: the line, Dalma and the list catch their own touches, the rest falls through here.
-        Box(Modifier.fillMaxSize().songGestures(onTap, onSwipe, onSwipeUp, onLongPress))
+        Box(
+            Modifier.fillMaxSize().songGestures(
+                onTap, onSwipe, onSwipeUp, onLongPress,
+                onPullStart = { if (!listNow.open) pull.begin(Pulling.NowPlaying) },
+                onPull = { dy -> if (pull.pulling == Pulling.NowPlaying) pull.drag(dy) },
+                onPullEnd = { if (pull.pulling == Pulling.NowPlaying && pull.release() == PullDown.Outcome.Search) actionsNow.onOpenWithSearch() },
+            ),
+        )
         Sky(Modifier.fillMaxSize(), state = sky, ambientShootingStars = true)
 
         if (listOrMoving) {
@@ -195,14 +233,17 @@ fun PlayerScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.offset { IntOffset(94.dp.roundToPx(), (94.dp + shift).roundToPx()) }.padding(end = 24.dp).alpha(1f - bigAlpha),
             )
-            if (list.searchOpen || searchShift > 0.dp) {
-                SearchRow(
-                    query = list.query,
-                    onQueryChange = actions.onQueryChange,
-                    open = list.searchOpen,
-                    modifier = Modifier.offset(y = 62.dp).fillMaxWidth().padding(horizontal = 24.dp).alpha(searchShift / PULL_MARK),
-                )
-            }
+        }
+        if (searchHeight > 0.dp) {
+            SearchRow(
+                query = list.query,
+                onQueryChange = actions.onQueryChange,
+                open = list.searchOpen,
+                height = searchHeight,
+                alpha = searchAlpha,
+                flash = pull.flash.value,
+                modifier = Modifier.offset(y = 62.dp).fillMaxWidth().padding(horizontal = 24.dp),
+            )
         }
 
         Cover(
@@ -213,7 +254,7 @@ fun PlayerScreen(
             corner = coverCorner,
             shadow = coverShadow,
             modifier = Modifier
-                .offset { IntOffset(coverX.roundToPx(), (coverY + if (list.open) shift else 0.dp).roundToPx()) }
+                .offset { IntOffset(coverX.roundToPx(), (coverY + if (list.open) shift else nowPull).roundToPx()) }
                 .size(coverSize)
                 .graphicsLayer {
                     alpha = intro.cover
@@ -231,7 +272,7 @@ fun PlayerScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.offset { IntOffset(0, (522.dp + rise).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
+                modifier = Modifier.offset { IntOffset(0, (522.dp + rise + nowPull).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
             )
             Text(
                 text = song.artist ?: stringResource(R.string.unknown_artist),
@@ -239,7 +280,7 @@ fun PlayerScreen(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.offset { IntOffset(0, (556.dp + rise).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
+                modifier = Modifier.offset { IntOffset(0, (556.dp + rise + nowPull).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp).alpha(bigAlpha * intro.texts),
             )
         }
 
@@ -249,7 +290,7 @@ fun PlayerScreen(
             walked = walked,
             drawn = intro.line,
             onSeek = onSeek,
-            modifier = Modifier.offset { IntOffset(0, (lineY - (TOUCH_BAND / 2).dp).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp),
+            modifier = Modifier.offset { IntOffset(0, (lineY - (TOUCH_BAND / 2).dp + nowPull).roundToPx()) }.fillMaxWidth().padding(horizontal = 24.dp),
         )
 
         if (bigAlpha > 0f) {
@@ -292,13 +333,15 @@ private fun Cover(cover: ImageBitmap?, light: Color, mid: Color, dark: Color, co
  */
 @Composable
 private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, drawn: Float, onSeek: (Long) -> Unit, modifier: Modifier) {
+    val seek by rememberUpdatedState(onSeek)
+    val duration by rememberUpdatedState(durationMillis)
     var touch by remember { mutableStateOf<Float?>(null) }
     val fraction = touch ?: if (durationMillis > 0) (positionMillis.toFloat() / durationMillis).coerceIn(0f, 1f) else 0f
     val shown = touch?.let { (it * durationMillis).toLong() } ?: positionMillis
     Box(
         modifier
             .height((TOUCH_BAND + 10 + 16).dp)
-            .pointerInput(durationMillis) {
+            .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val width = size.width.toFloat().coerceAtLeast(1f)
@@ -310,7 +353,7 @@ private fun SongLine(positionMillis: Long, durationMillis: Long, walked: Color, 
                     }
                     val landed = touch
                     touch = null
-                    if (landed != null && durationMillis > 0) onSeek((landed * durationMillis).toLong())
+                    if (landed != null && duration > 0) seek((landed * duration).toLong())
                 }
             },
     ) {
