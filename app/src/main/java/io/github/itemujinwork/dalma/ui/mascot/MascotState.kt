@@ -121,8 +121,12 @@ class MascotState internal constructor(val reducedMotion: Boolean, internal val 
     /** Where she was when the motion last changed, less where the one before would have her: it fades out with the blend, so no switch jumps. */
     private var idleJump by mutableStateOf(IdlePose.STILL)
 
+    /** For pictures: the idle motion held at this instant of its clock, even with motion off. */
+    internal var heldAt: Long? = null
+
     /** Her idle pose this instant: the motion she follows, cross-faded from the one before; still when motion is off. */
     internal fun idlePose(): IdlePose {
+        heldAt?.let { return IdlePose.of(idle, it) }
         if (reducedMotion) return IdlePose.STILL
         val t = idleBlend.value
         return IdlePose.of(previousIdle, idleMillis).mix(IdlePose.of(idle, idleMillis), t).plus(idleJump, 1f - t)

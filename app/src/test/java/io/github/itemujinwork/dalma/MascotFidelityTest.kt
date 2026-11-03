@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.itemujinwork.dalma.core.IdleMotion
 import io.github.itemujinwork.dalma.ui.LocalReducedMotion
 import io.github.itemujinwork.dalma.ui.mascot.Expression
 import io.github.itemujinwork.dalma.ui.mascot.Mascot
@@ -64,4 +65,26 @@ class MascotFidelityTest {
     // The file holds the head, the back hair and the fringe at 4° alike; the motion's 1.2× and 0.6× are the canvas's.
     @Test fun kacsint() = pose("kacsint") { greetTilt.snapTo(4f); greetTiltBack.snapTo(4f); greetTiltFront.snapTo(4f); winkSquash.snapTo(1f); browMorph.snapTo(1f) }
     @Test fun tolt() = pose("tolt") { clipFill = 0.6f }
+
+    // The files' own motion, held at moments after every lag has begun: hallgat.svg (2.4 s), hallgat-este.svg (4.2 s), alszik-fal.svg (5.5 s).
+    private fun moving(name: String, motion: IdleMotion, millis: Long, block: suspend MascotState.() -> Unit = {}) = pose("$name-$millis") {
+        block()
+        setIdle(motion)
+        heldAt = millis
+    }
+
+    @Test fun hallgat600() = moving("hallgat", IdleMotion.LISTEN_DAY, 600)
+    @Test fun hallgat1200() = moving("hallgat", IdleMotion.LISTEN_DAY, 1200)
+    @Test fun hallgat1800() = moving("hallgat", IdleMotion.LISTEN_DAY, 1800)
+    @Test fun hallgat2700() = moving("hallgat", IdleMotion.LISTEN_DAY, 2700)
+    @Test fun hallgat3300() = moving("hallgat", IdleMotion.LISTEN_DAY, 3300)
+    @Test fun hallgatEste1050() = moving("hallgat-este", IdleMotion.LISTEN_NIGHT, 1050) { setExpression(Expression.NIGHT) }
+    @Test fun hallgatEste2100() = moving("hallgat-este", IdleMotion.LISTEN_NIGHT, 2100) { setExpression(Expression.NIGHT) }
+    @Test fun hallgatEste3150() = moving("hallgat-este", IdleMotion.LISTEN_NIGHT, 3150) { setExpression(Expression.NIGHT) }
+    @Test fun hallgatEste5250() = moving("hallgat-este", IdleMotion.LISTEN_NIGHT, 5250) { setExpression(Expression.NIGHT) }
+    @Test fun hallgatEste6300() = moving("hallgat-este", IdleMotion.LISTEN_NIGHT, 6300) { setExpression(Expression.NIGHT) }
+    @Test fun alszikFal1375() = moving("alszik-fal", IdleMotion.ASLEEP, 1375) { sleepAtWallStill() }
+    @Test fun alszikFal2750() = moving("alszik-fal", IdleMotion.ASLEEP, 2750) { sleepAtWallStill() }
+    @Test fun alszikFal4125() = moving("alszik-fal", IdleMotion.ASLEEP, 4125) { sleepAtWallStill() }
+    @Test fun alszikFal6875() = moving("alszik-fal", IdleMotion.ASLEEP, 6875) { sleepAtWallStill() }
 }
