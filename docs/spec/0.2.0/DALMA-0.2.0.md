@@ -24,8 +24,9 @@ Egy mondatban: **minden, ami a `Zene/Dalma` mappában van, Dalmáé; megmutatja,
 4. **Szín.** A borítóból két szín (Palette): uralkodó és élénk. Háttér-gradiens, a vonal színe. Ha nincs borító: a két szín az előadó nevének hash-éből. Dalváltáskor 500 ms átúszás.
 5. **Lista-mód.** A borító a bal felső sarokba zsugorodik, a cím mellé ül, a vonal az aljára; csipek, sorok. Vissza a kis borítóra koppintva. Kereső lehúzásra. Törlés elhúzásra: „Töröljem?" + „Igen".
 6. **Keverés.** Hosszú nyomás → lista-mód, a sorok animálva átrendeződnek, aztán vissza magától. Újra: ugyanígy, visszaáll a sorrend. A szóló dal elöl marad.
-7. **Listák.** `.m3u` olvasás és írás ugyanabban a mappában, relatív útvonalakkal. A „+" csip új listát csinál. YouTube-lejátszási lista megosztásából a letöltés végén magától `.m3u` lesz.
+7. **Listák.** `.m3u` olvasás és írás ugyanabban a mappában, relatív útvonalakkal. YouTube-lejátszási lista megosztásából a letöltés végén magától `.m3u` lesz.
 7b. **Lehúzás két zónával.** Lista-módban a lehúzás rövid = vissza a „most szól"-ra, hosszú (96 dp) = kereső; a „most szól"-on a lehúzás = lista és kereső együtt. Részletek a Mozgásnál. Ez a már kész 5. lépés gesztuskódját módosítja — a hibalista után, a 8 előtt.
+7c. **Listák a felületen.** Csipváltás kaszkáddal; a sor jobbra húzása = listák a sorban (tele = benne van, koppintás ki-be, + új lista ebből a dalból — lista csak így születik, üres lista nincs); hosszú nyomás a csipen = átnevezés, üres névvel törlés. Nincs lista → nincs csipsor. Részletek a Képernyőknél és a Mozgásnál. A 7b után, a 8 előtt.
 8. **Indítás, ha van zene.** A köszönés után Dalma a sarokba lép, és előjön a lejátszó (lásd a mozgásokat).
 9. **Dalma a lejátszóban.** Nappal / este állapot. Megállításkor este kinyitja a szemét; a borító 0.94-re megy össze.
 9b. **Szerkesztés.** Dupla koppintás a dalon → cím, előadó szerkeszthető, a Borító sorra koppintva kép választható a telefon fotóalbumaiból (csak onnan). Mentés a fájl címkéibe (Opus: Vorbis comment + METADATA_BLOCK_PICTURE; AAC: iTunes-címkék), nem adatbázisba. Teszt: a módosított fájlt egy másik lejátszó is a javított adattal mutatja.
@@ -42,6 +43,8 @@ Egy mondatban: **minden, ami a `Zene/Dalma` mappában van, Dalmáé; megmutatja,
 - Shared-element átmenet Compose-ban: `SharedTransitionLayout`. Nézd meg, melyik Compose-verziótól van, és azt írd a buildbe — ne találd ki.
 - Hosszú nyomás és vízszintes húzás ugyanazon a borítón ütközik. Egy `pointerInput`, a húzás küszöbe előzze meg a hosszú nyomás idejét. Teszteld, hogy húzás közben nem indul keverés.
 - A kereső lehúzása ne induljon el egy sima görgetéstől: küszöb (96 dp), ellenállás, és rezgés, amikor átlépted.
+- A csipsor vízszintesen görgethető, és ugyanott hosszú nyomás = átnevezés: a hosszú nyomás csak akkor induljon, ha az ujj nem mozdult (slop), különben görgetés közben nyílik meg a szerkesztés.
+- A sor jobbra húzása és a lista függőleges görgetése egy felületen van: az irányt az első 16 dp dönti el, utána nem vált.
 - A rövid lehúzás = bezárás csak akkor élhet, ha a lista a tetején áll (görgetés 0), és csak húzásra, nem a görgetés lendületéből. Holtsáv 16 dp: ami ennél rövidebb, az semmi. Különben egy erős felgörgetés túlfutása bezárja a listát, és azt senki nem érti.
 
 ## A képernyők
@@ -73,11 +76,14 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 **Lista-mód** (ugyanaz a képernyő, más elrendezés)
 
 - Kis borító: 56 × 56, bal 24, fent 62, sarok 10. Mellette cím Fraunces 18 (bal 94, fent 68), előadó Nunito 13 halvány (fent 94).
-- Csipek: fent 134, bal 24; „Mind" aktív (menta háttér, éj szöveg), a többi mélyteál keret, halvány szöveg, 13 px 600, 6 × 12 belső, sarok 14, köz 8. Utolsó csip: „+".
+- Csipek: fent 134, bal 24; „Mind" aktív (menta háttér, éj szöveg), a többi mélyteál keret, halvány szöveg, 13 px 600, 6 × 12 belső, sarok 14, köz 8. Nincs „+" csip. Ha egy lista sincs, csipsor sincs: a sorok 134-től indulnak; az első lista születésekor a csipsor 18 dp-ről beúszik és a sorok lecsúsznak 182-re (300 ms).
 - Sorok: fent 182-től, 64 dp-nként, bal 24, szélesség 342. Kis borító 48 × 48 sarok 10; cím Nunito 16 600 (bal 62, fent 10); előadó Nunito 13 tompa (fent 33). A szóló dal címe menta, a sor jobb végén 6 dp-s menta pont.
 - Vonal: fent 796.
 - Háttér: a dal uralkodó színének 10%-a az éjbe keverve fent, 40%-nál már éj.
 - Kereső: lehúzásra (96 dp, lásd a Mozgásnál) minden 96 dp-vel lejjebb csúszik, felül egy 44 dp-s sor, alul 1 px mélyteál vonal, benne 2 × 22 menta kurzor. Semmi ikon, semmi helykitöltő szöveg. Bezárás: felgörgetés — a lista felmegy a helyére, a sor eltűnik (ha üres a mező; ha van benne szöveg, marad, amíg ki nem törlöd).
+- Listák (`design/anim-csipvaltas.png`, `anim-hozzaadas.png`, `anim-atnevezes.png`): a csipsor vízszintesen görgethető, sorrend: „Mind", aztán a listák ábécében (a fájlnév szerint; átnevezés után is egyértelmű, nem kell dátumot őrizni). A „Mind" minden dal, a legújabb fent (fájldátum). Egy lista = egy `.m3u`, a sorrendje a hozzáadás sorrendje; átrendezés nincs a 0.2.0-ban. A csip csak nézetet vált: a szóló lista akkor lesz az, amire koppintottál, ha egy dalára koppintasz. Egy dal akárhány listában lehet. Üres lista nincs: lista csak egy dalból születik (lent), és ha az utolsó dalát kiveszed belőle, a lista eltűnik — a csipje elhalványul, az `.m3u` törlődik.
+- A sor jobbra húzva (72 dp, elengedésre visszaugrik) kinyílik 60-ról 104 dp-re, az alatta lévők lejjebb csúsznak; a második sorban a listák csipjei (a „Mind" nélkül), balról 0-tól, ugyanaz a csip mint fent: tele menta = benne van, keret = nincs. Koppintás vált, azonnal írja az `.m3u`-t. A csipek végén „+": ez az egyetlen „+" az appban, és az egyetlen hely, ahol lista születik. Koppintásra a csip kinyílik beviteli csippé (menta keret, kurzor, billentyűzet), név, Enter → kész a lista, és ez a dal már benne van (tele); fent a csipsor végén megjelenik az új csip. Bezárás: koppintás bárhova máshova, vagy a sor balra húzása; az üres „+" csip visszazárul, semmi nem jön létre.
+- Lista átnevezése és törlése: hosszú nyomás a csipen (rezgés) → a csipbe kurzor jön a név végére, menta keret, billentyűzet; a név szerkeszthető, a csip szélessége a gépeléssel megy, a többi csip vele csúszik. Enter: a keret visszavált, az `.m3u` átnevezve. Ha a nevet üresre törlöd és Enter: ugyanaz a lap, mint a dal törlésénél — „Töröljem?" / „Igen", Dalma bocsánatkérő arccal —, Igenre az `.m3u` törlődik, a csip elhalványul, a többi a helyére csúszik; a dalok a mappában maradnak. Máshova koppintva: a név visszaáll, semmi. A „Mind" csipre a hosszú nyomás nem csinál semmit.
 - Törlés: a sor 96 dp-vel balra csúszik; alul 250 dp-s lap, sarok 28, háttér = éj 94% + fehér. Fogantyú 36 × 4 mélyteál. „Töröljem?" Fraunces 28 menta (bal 150, fent 58). „Igen" pirula: menta háttér, éj szöveg 15 700, 10 × 26 belső, sarok 20 (bal 150, fent 112). Dalma bocsánatkérő arccal, 200-as méretben, bal -20, alul 0. Bárhova máshova koppintasz: a lap lemegy, nem történt semmi.
 
 **Mozdulatok** — a borítón; a vonalon és Dalmán kívül bárhol a képernyőn ugyanez
@@ -94,6 +100,9 @@ Betű: Fraunces 500 a címekhez, Nunito 400/600/700 a szöveghez. Csillagos ég 
 | lista lehúzása hosszan (96 dp-n túl, rezgés), elengedés | kereső |
 | lista felgörgetése nyitott keresővel | a kereső becsukódik |
 | sor elhúzása balra | törlés: Töröljem? / Igen |
+| sor elhúzása jobbra | listák: a sor kinyílik, alatta a listák csipjei (tele = benne van); koppintás ki-be; + új lista ebből a dalból |
+| koppintás egy csipen | az a lista látszik; a zene nem áll meg |
+| hosszú nyomás egy csipen | átnevezés helyben a csipben: kurzor, név, Enter. Üresre törölve és Enter: Töröljem? / Igen — a lista megy, a dalok maradnak. A „Mind"-re nem reagál |
 | dupla koppintás (borítón, címen vagy a lista sorában) | szerkesztés (lásd lent) |
 
 **Szerkesztés** (`design/Lejatszo-Szerkeszt.png`, `anim-szerkesztes.png`)
@@ -139,6 +148,25 @@ Egy gesztus, két zóna, egy küszöb. A tartalom az ujjal megy: 96 dp-ig egy az
 - „Most szól"-on: a borító, a cím és a vonal megy az ujjal (ugyanaz a 96 + ellenállás). A küszöb alatt elengedve minden visszaugrik, nem történt semmi. A küszöbön túl elengedve egy animációban, 400 ms: a borító a sarokba (a kereső-helyzetbe, fent 158), a nagy cím el, a kis cím mellé, csipek és sorok 18 dp-ről fel, a vonal 796-ra, Dalma el — és a kereső sora már fent van.
 - Nyitott keresővel felgörgetés: a lista felmegy 96-tal a helyére, a sor közben elhalványul. Ha van szöveg a mezőben, nem csukódik.
 - A küszöb után az ellenállás azért kell, hogy érezhető legyen: „innen már nincs hova". 150 dp ujj = 118 dp tartalom.
+
+**Csipváltás** (`anim-csipvaltas.png`)
+
+- A menta pirula átcsúszik a régi csipről az újra (250 ms), a szöveg színe vele vált.
+- A régi sorok fentről lefelé, egyenként 30 ms késéssel mennek el: 180 ms alatt halványulnak, 6 dp-t lecsúsznak, és elmosódnak (blur 3 dp; Android 12 alatt nincs blur, ott csak a halványulás és a csúszás). Az új sorok ugyanígy, fentről lefelé, 30 ms-onként jönnek: −6 dp-ről, elmosódásból, 220 ms. A kettő átlapol: az új kaszkád 250 ms-mal a régi után indul, nem várja meg a végét. Az egész fél másodperc alatt lecseng, mert naponta ötvenszer nyomják.
+- Ha a szóló dal benne van az új listában, a sora menta; ha nincs, a zene attól még megy tovább.
+
+**Hozzáadás a sorban, új lista** (`anim-hozzaadas.png`)
+
+- Jobbra húzás: a sor az ujjal megy (max 72 dp), elengedésre 250 ms alatt visszaugrik, és közben kinyílik (300 ms); az alatta lévő sorok ugyanannyi idő alatt csúsznak lejjebb. A csipek 150 ms-mal a nyílás után jönnek, balról 8 dp-ről, 40 ms-onként.
+- Koppintás egy csipen: 200 ms alatt kitelik (keret → menta háttér, szöveg éj), vagy vissza.
+- A „+" a sor csipjei végén: 250 ms alatt szélesedik beviteli csippé, a „+" jel eltűnik, menta keret, kurzor; a billentyűzet feljön. Enter: a keret visszavált, a név marad, a csip kitelik (benne a dal); fent a csipsor végén 8 dp-ről beúszik az új csip (ha túlér, a sor odagördül). Üres név + Enter vagy elkattintás: a csip visszazárul, semmi.
+- A nyitott sor bezárása: a csipek 150 ms alatt el, a sor 300 ms alatt összezár, a többi visszacsúszik.
+
+**Átnevezés, törlés** (`anim-atnevezes.png`)
+
+- Hosszú nyomás (500 ms, a végén rezgés): a csip kerete 150 ms alatt mentára vált, a kurzor a név végén villog, a billentyűzet feljön. A csip szélessége minden betűvel ugrik (nincs animáció, mint egy beviteli mezőnél), a mögötte lévő csipek 200 ms alatt követik.
+- Enter: a keret 200 ms alatt visszavált mélyteálra, a billentyűzet lemegy. Üres név + Enter: a „Töröljem?" lap feljön (ugyanaz, mint a dalnál, 300 ms). Igen: a lap lemegy, a csip 250 ms alatt 0 szélességre zárul és elhalványul, a többi csip a helyére csúszik.
+- Máshova koppintva szerkesztés közben: a régi név 150 ms alatt visszaáll, semmi nem történt.
 
 **Lista-mód be és ki** (`anim-lista-es-keveres.png`, Apple Music-féle)
 
@@ -186,7 +214,7 @@ Dalma mentája sosem változik a dal színével.
 ## Amit nem csinálunk
 
 - Nincs súgó, tipp, üres-állapot szöveg, „Nincs zene" felirat. Ha nincs zene: az üres főképernyő, Dalma, ennyi.
-- Nincs beállítások menü. Nincs ikon a képernyőn, csak a „+" csip.
+- Nincs beállítások menü. Nincs ikon a képernyőn; az egyetlen „+" a sor listái között, és csak akkor látszik, ha a sort jobbra húztad.
 - Nem kódolunk át: Opus marad, AAC csak tartalék.
 - Nem rendezzük át a letöltőt. Ami működik, marad.
 
